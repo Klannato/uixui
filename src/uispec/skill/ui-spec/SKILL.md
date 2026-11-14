@@ -1,6 +1,6 @@
 ---
 name: ui-spec
-description: Use whenever you build, change, or review a user interface. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it, baking each texture into its element as a placeholder. Also offers to open the annotator when no spec exists yet.
+description: Use whenever you build, change, or review a user interface, or when the user pastes the "Implement or update the UI for …" prompt copied from the uispec app. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it, baking each texture into its element as a placeholder. On first use in a project it walks the user through making a spec and handing the prompt back.
 ---
 
 # ui-spec
@@ -12,10 +12,29 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
 1. Work out the project name: the git repo root name, or the current directory name if there is no repo.
 2. Check for `~/ui-specs/<project>/current/spec.md`.
 3. If it exists, read it. Then read every `screens/*/annotated.png` and `screens/*/elements.json` it lists. The annotated PNG shows the numbered outlines, pins, arrows, and textures; the JSON has the same content in machine-readable form.
-4. If it does not exist, say so and offer to open the annotator:
-   - `uispec app open --project ~/ui-specs/<project>` (or `uispec project new` for a new one)
-   - Then ask the user to annotate and export, and wait for them to confirm.
-   - Do not start building the UI before a spec exists unless the user says to skip it.
+4. If it does not exist, this is your **first time in this project**. Say so, then walk the user
+   through making a spec and handing it back to you. Do this **once**, on this first contact only;
+   once `current/spec.md` exists, never repeat the walkthrough — just read the spec and build.
+   1. Offer to open the annotator on the project:
+      - existing folder: `uispec app open --project ~/ui-specs/<project>`
+      - brand new project: `uispec project new --name <project>`
+   2. Ask the user to add their screens. In the app they can **Paste** a screenshot (Ctrl+V),
+      **Add image** a file, or **Capture region** a part of a live app.
+   3. Ask them to draw a **numbered element** over each part of the UI and describe it in the form:
+      name, purpose, behavior, states, content, constraints, notes, reference. Adding a texture is
+      optional. They set the **project brief** and **design tokens** once for the whole app, and the
+      **layout grid** sets spacing.
+   4. When the screens are described, ask them to press **Export**. That writes
+      `~/ui-specs/<project>/current/spec.md` plus `screens/*/annotated.png`.
+   5. Then ask them to press **Copy prompt** in the toolbar and paste it to you. That message reads
+      roughly "Implement or update the UI for <project>. Read …/spec.md first and follow it exactly…"
+      and names this skill. When you receive it, that is your cue to continue with Step 2.
+   6. Wait for them to paste the prompt (or tell you the spec is ready). Do not build anything before
+      the spec exists unless the user says to skip it.
+
+   You may do the mechanical steps for them with the commands under "Working with the annotator"
+   below (add screens, draw elements, set the brief), but the descriptions are the user's to
+   confirm. Keep the walkthrough to the first time and then get out of the way.
 
 ## Step 2: read the spec carefully
 
@@ -81,5 +100,9 @@ All changes go through the `uispec` command. It talks to the running app and sta
 **Export and history**
 - `uispec export` writes a new timestamped bundle and updates `current/`
 - `uispec undo` / `uispec redo`
+
+**Handoff.** After exporting, the app's **Copy prompt** button copies an instruction that points you at
+`current/spec.md` and names this skill; the user pastes it to you to start a task. Seeing that prompt
+means the spec is ready — read it and build.
 
 Do not edit `project.json` directly while the app is open. Use the commands above.
