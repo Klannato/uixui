@@ -3,18 +3,25 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QCursor, QImage, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QInputDialog, QWidget
 
 from ..commands import COMMANDS, CommandError
 from ..controller import Controller
-from ..model import Element
+from ..model import MIN_SIZE, Element, bounds, fit_points
 from ..render import ACCENT, PIN_RADIUS, draw_screen_marks
 from . import theme
 from .help import HINTS
 
 TOOLS = ("select", "rect", "ellipse", "freehand", "arrow", "text")
 HIT_MARGIN = 6
+HANDLE_PX = 10
+HANDLE_CURSORS = {
+    "n": Qt.CursorShape.SizeVerCursor, "s": Qt.CursorShape.SizeVerCursor,
+    "e": Qt.CursorShape.SizeHorCursor, "w": Qt.CursorShape.SizeHorCursor,
+    "ne": Qt.CursorShape.SizeBDiagCursor, "sw": Qt.CursorShape.SizeBDiagCursor,
+    "se": Qt.CursorShape.SizeFDiagCursor, "nw": Qt.CursorShape.SizeFDiagCursor,
+}
 
 
 class Canvas(QWidget):
@@ -32,7 +39,7 @@ class Canvas(QWidget):
         self._drag: dict | None = None
         self.setMinimumSize(480, 360)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setMouseTracking(False)
+        self.setMouseTracking(True)
 
     # ---- state -----------------------------------------------------------
 
@@ -107,6 +114,7 @@ class Canvas(QWidget):
         if screen is not None:
             draw_screen_marks(p, screen, self.selected)
         self._paint_draft(p)
+        self._paint_handles(p)
         p.end()
 
     def _paint_draft(self, p: QPainter) -> None:
@@ -152,6 +160,42 @@ class Canvas(QWidget):
                 return e
         return None
 
+    def _handle_points(self, e: Element) -> dict[str, tuple[float, float]]:
+        x0, y0, x1, y1 = e.bbox()
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        return {
+            "n": (mx, y0), "ne": (x1, y0), "e": (x1, my), "se": (x1, y1),
+            "s": (mx, y1), "sw": (x0, y1), "w": (x0, my),
+        }
+
+    def _handle_at(self, x: float, y: float) -> str | None:
+        """Name of the handle under the pointer on the selected element, or 'nw' for its pin."""
+        screen = self.screen()
+        e = screen.element(self.selected) if screen and self.selected is not None else None
+        if e is None or self.tool != "select":
+            return None
+        scale, _, _ = self._fit()
+        radius = (HANDLE_PX / 2 + 4) / scale
+        px, py, _, _ = e.bbox()
+        if math.hypot(x - px, y - py) <= (PIN_RADIUS + 2) / scale:
+            return "nw"
+        for name, (hx, hy) in self._handle_points(e).items():
+            if abs(x - hx) <= radius and abs(y - hy) <= radius:
+                return name
+        return None
+
+    def _paint_handles(self, p: QPainter) -> None:
+        screen = self.screen()
+        e = screen.element(self.selected) if screen and self.selected is not None else None
+        if e is None or self.tool != "select":
+            return
+        scale, _, _ = self._fit()
+        size = HANDLE_PX / scale
+        p.setPen(QPen(QColor(ACCENT), 1.5 / scale))
+        p.setBrush(QColor("#ffffff"))
+        for hx, hy in self._handle_points(e).values():
+            p.drawRect(QRectF(hx - size / 2, hy - size / 2, size, size))
+
     # ---- mouse -----------------------------------------------------------
 
     def mousePressEvent(self, event):
@@ -161,10 +205,17 @@ class Canvas(QWidget):
         x, y = self.to_image(event.position())
         screen = self.screen()
         if self.tool == "select":
+            handle = self._handle_at(x, y)
+            if handle is not None:
+                e = self.screen().element(self.selected)
+                self._drag = {"mode": "resize", "handle": handle, "number": e.number,
+                              "origin": (x, y), "original": [list(p) for p in e.points]}
+                self.update()
+                return
             hit = self._element_at(x, y)
             self.select(hit.number if hit else None)
             if hit:
-                self._drag = {"number": hit.number, "origin": (x, y),
+                self._drag = {"mode": "move", "number": hit.number, "origin": (x, y),
                               "original": [list(p) for p in hit.points]}
         elif self.tool in ("rect", "ellipse"):
             self._draft = {"kind": self.tool, "start": (x, y), "end": (x, y)}
@@ -191,8 +242,20 @@ class Canvas(QWidget):
                 d["end"] = (x, y)
             self.update()
         elif self._drag:
-            self._move_selected(x, y)
+            if self._drag["mode"] == "resize":
+                self._resize_selected(x, y)
+            else:
+                self._move_selected(x, y)
             self.update()
+        else:
+            self.setCursor(self._cursor_for(self._handle_at(x, y)))
+
+    def _cursor_for(self, handle: str | None) -> QCursor:
+        if handle is None:
+            return QCursor(Qt.CursorShape.ArrowCursor)
+        if handle == "nw":
+            return QCursor(Qt.CursorShape.SizeFDiagCursor)
+        return QCursor(HANDLE_CURSORS[handle])
 
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
@@ -222,6 +285,26 @@ class Canvas(QWidget):
                 self._run("arrow.add", {"from": d["from"], "to_point": [x, y]})
         self.update()
 
+    def _resize_selected(self, x: float, y: float) -> None:
+        drag = self._drag
+        screen = self.screen()
+        e = screen.element(drag["number"]) if screen else None
+        if e is None:
+            return
+        ox0, oy0, ox1, oy1 = bounds(drag["original"])
+        h = drag["handle"]
+        x0, y0, x1, y1 = ox0, oy0, ox1, oy1
+        if "w" in h or h == "nw":
+            x0 = min(x, ox1 - MIN_SIZE)
+        if "e" in h:
+            x1 = max(x, ox0 + MIN_SIZE)
+        if "n" in h or h == "nw":
+            y0 = min(y, oy1 - MIN_SIZE)
+        if "s" in h:
+            y1 = max(y, oy0 + MIN_SIZE)
+        e.points = fit_points(drag["original"], e.kind, (ox0, oy0, ox1, oy1), (x0, y0, x1, y1))
+        drag["moved"] = True
+
     def _move_selected(self, x: float, y: float) -> None:
         drag = self._drag
         screen = self.screen()
@@ -239,7 +322,7 @@ class Canvas(QWidget):
             return
         screen = self.screen()
         e = screen.element(drag["number"])
-        final = [list(p) for p in e.points]
+        final = [[round(px), round(py)] for px, py in e.points]
         number = drag["number"]
         e.points = [list(p) for p in drag["original"]]
         self.ctrl.mutate(lambda project: setattr(

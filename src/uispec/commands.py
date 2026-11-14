@@ -289,6 +289,27 @@ def element_edit(ctrl: Controller, args: dict):
     return {"element": ctrl.project.screen(sid).element(number).to_dict()}
 
 
+@command("element.resize")
+def element_resize(ctrl: Controller, args: dict):
+    screen = resolve_screen(ctrl, args.get("screen"))
+    number = _number(args)
+    if screen.element(number) is None:
+        raise CommandError(f"no element {number} on {screen.name}")
+    box = args.get("box")
+    if not box or len(box) != 4:
+        raise CommandError("resize needs box [x, y, w, h]")
+    x, y, w, h = (float(v) for v in box)
+    sid = screen.id
+
+    def apply(project):
+        project.screen(sid).element(number).resize(x, y, x + w, y + h)
+    try:
+        ctrl.mutate(apply)
+    except ValueError as exc:
+        raise CommandError(str(exc)) from exc
+    return {"element": ctrl.project.screen(sid).element(number).to_dict()}
+
+
 @command("element.delete")
 def element_delete(ctrl: Controller, args: dict):
     screen = resolve_screen(ctrl, args.get("screen"))

@@ -16,8 +16,9 @@ TIPS = {
     "screens_list": "<b>Screens</b><br>The screens in flow order. Drag a screen to reorder it.",
     "leads_to": "Where this screen goes next, e.g. <i>Dashboard after login</i>. Included in the spec.",
     # tools
-    "tool_select": "<b>Select</b> (V)<br>Click an element to select it. Drag it to move it. "
-                   "Press Delete to remove it.",
+    "tool_select": "<b>Select</b> (V)<br>Click an element to select it and drag it to move it. "
+                   "Drag a white handle to resize it, or drag its numbered pin to resize from the "
+                   "top-left. Press Delete to remove it.",
     "tool_rect": "<b>Rectangle</b> (R)<br>Draw a box around an element. It gets a numbered pin.",
     "tool_ellipse": "<b>Ellipse</b> (E)<br>Draw an oval around an element. It gets a numbered pin.",
     "tool_freehand": "<b>Freehand</b> (F)<br>Draw a loose outline around an irregular element.",

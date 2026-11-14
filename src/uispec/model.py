@@ -10,8 +10,29 @@ BRIEF_FIELDS = ("purpose", "audience", "tone")
 TOKEN_FIELDS = ("colors", "fonts", "spacing", "radii")
 
 
+MIN_SIZE = 4.0
+
+
 def new_id() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def bounds(points: list[list[float]]) -> tuple[float, float, float, float]:
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def fit_points(points: list[list[float]], kind: str, old: tuple, new: tuple) -> list[list[float]]:
+    """Map a shape from its old bounding box onto a new one. Rectangles and ellipses stay two corners."""
+    x0, y0, x1, y1 = new
+    if kind in ("rect", "ellipse"):
+        return [[x0, y0], [x1, y1]]
+    ox0, oy0, ox1, oy1 = old
+    ow = (ox1 - ox0) or 1.0
+    oh = (oy1 - oy0) or 1.0
+    nw, nh = x1 - x0, y1 - y0
+    return [[x0 + (x - ox0) / ow * nw, y0 + (y - oy0) / oh * nh] for x, y in points]
 
 
 @dataclass
@@ -30,9 +51,12 @@ class Element:
     reference: str = ""
 
     def bbox(self) -> tuple[float, float, float, float]:
-        xs = [p[0] for p in self.points]
-        ys = [p[1] for p in self.points]
-        return min(xs), min(ys), max(xs), max(ys)
+        return bounds(self.points)
+
+    def resize(self, x0: float, y0: float, x1: float, y1: float) -> None:
+        if x1 - x0 < MIN_SIZE or y1 - y0 < MIN_SIZE:
+            raise ValueError(f"elements must be at least {MIN_SIZE:g}px on each side")
+        self.points = fit_points(self.points, self.kind, self.bbox(), (x0, y0, x1, y1))
 
     def center(self) -> tuple[float, float]:
         x0, y0, x1, y1 = self.bbox()

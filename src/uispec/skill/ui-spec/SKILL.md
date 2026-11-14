@@ -44,6 +44,7 @@ All changes go through the `uispec` command (it talks to the running app and sta
 - `uispec project info` / `uispec screen list` / `uispec element list [--screen S]`
 - `uispec element edit N --set purpose="..." --set states="default,hover,disabled"`
 - `uispec element add --kind rect --box x,y,w,h` (image pixels, top-left origin)
+- `uispec element resize N --box x,y,w,h` (image pixels; minimum 4px per side)
 - `uispec element delete N` (later elements renumber automatically)
 - `uispec arrow add --from N --to M --label "..."`
 - `uispec label add "note" --x 10 --y 10`

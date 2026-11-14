@@ -65,3 +65,28 @@ def test_commands_registered():
     for name in ["app.status", "project.new", "screen.add", "element.add", "element.edit",
                  "element.delete", "arrow.add", "label.add", "export", "render", "undo", "redo"]:
         assert name in COMMANDS
+
+
+def test_resize_command_updates_box_and_undoes(tmp_path, qapp, sample_png):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Login"})
+    run(ctrl, "element.add", {"kind": "rect", "box": [10, 10, 40, 20]})
+    out = run(ctrl, "element.resize", {"number": 1, "box": [5, 5, 100, 60]})
+    assert out["element"]["points"] == [[5, 5], [105, 65]]
+    run(ctrl, "undo")
+    assert run(ctrl, "element.list")["elements"][0]["points"] == [[10, 10], [50, 30]]
+
+
+def test_resize_command_rejects_tiny_box(tmp_path, qapp, sample_png):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Login"})
+    run(ctrl, "element.add", {"kind": "rect", "box": [10, 10, 40, 20]})
+    try:
+        run(ctrl, "element.resize", {"number": 1, "box": [0, 0, 1, 1]})
+    except CommandError as exc:
+        assert "at least" in str(exc)
+    else:
+        raise AssertionError("expected an error")
+    assert run(ctrl, "element.list")["elements"][0]["points"] == [[10, 10], [50, 30]]

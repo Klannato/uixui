@@ -141,6 +141,10 @@ def build_parser() -> argparse.ArgumentParser:
     eedit.add_argument("--set", action="append", metavar="FIELD=VALUE",
                        help="name, purpose, behavior, content, constraints, notes, reference, or states "
                             "(comma-separated)")
+    eresize = element.add_parser("resize", help="set an element's box to x,y,w,h")
+    eresize.add_argument("number", type=int)
+    eresize.add_argument("--screen")
+    eresize.add_argument("--box", required=True, help="x,y,w,h in image pixels")
     edel = element.add_parser("delete")
     edel.add_argument("number", type=int)
     edel.add_argument("--screen")
@@ -246,6 +250,8 @@ def run(args: argparse.Namespace):
             for key, value in _kv(args.set).items():
                 fields[key] = [s.strip() for s in value.split(",") if s.strip()] if key == "states" else value
             return send("element.edit", {"screen": args.screen, "number": args.number, "fields": fields})
+        if c == "resize":
+            return send("element.resize", {"screen": args.screen, "number": args.number, "box": _box(args.box)})
         if c == "delete":
             return send("element.delete", {"screen": args.screen, "number": args.number})
 

@@ -35,3 +35,29 @@ def test_round_trip_keeps_everything():
 def test_missing_fields_reports_name_and_purpose():
     s = make_screen()
     assert s.elements[0].missing_fields() == ["name", "purpose"]
+
+
+def test_resize_rect_keeps_two_corners():
+    from uispec.model import Element
+
+    e = Element(number=1, kind="rect", points=[[10, 10], [60, 40]])
+    e.resize(10, 10, 110, 90)
+    assert e.points == [[10, 10], [110, 90]]
+    assert e.bbox() == (10, 10, 110, 90)
+
+
+def test_resize_freehand_scales_every_point():
+    from uispec.model import Element
+
+    e = Element(number=1, kind="freehand", points=[[0, 0], [50, 0], [50, 100]])
+    e.resize(0, 0, 100, 50)
+    assert e.points == [[0, 0], [100, 0], [100, 50]]
+
+
+def test_resize_rejects_tiny_boxes():
+    import pytest
+    from uispec.model import Element
+
+    e = Element(number=1, kind="rect", points=[[0, 0], [20, 20]])
+    with pytest.raises(ValueError):
+        e.resize(0, 0, 2, 20)

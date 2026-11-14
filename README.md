@@ -12,6 +12,7 @@ an agent can read and implement.
 
 - **Screenshots in any way you like:** paste from the clipboard, drop image files, add files, or capture a region of your screen (Wayland-safe, via the desktop portal).
 - **Numbered elements:** draw rectangles, ellipses, or freehand outlines. Each one gets a pin that the description refers to.
+- **Resize and move:** drag the handles on a selected element to resize it, drag its pin to resize from the top-left, or drag the body to move it. Agents can resize with `uispec element resize`.
 - **Structured descriptions:** name, purpose, behavior, states (checklist plus custom), content, constraints, notes, and a reference link.
 - **Flows:** order screens by drag and drop, add a "leads to" note, and draw arrows between elements.
 - **Project brief and design tokens:** purpose, audience, tone, colors, fonts, spacing, and radii apply to every screen.
