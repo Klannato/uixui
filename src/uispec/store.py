@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+from .model import Project
+
+PROJECT_FILE = "project.json"
+RECENT_LIMIT = 20
+
+
+def ui_specs_root() -> Path:
+    return Path.home() / "ui-specs"
+
+
+def state_dir() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    path = Path(base) / "uispec"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def default_project_name(cwd: Path) -> str:
+    try:
+        top = subprocess.run(
+            ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        return Path(top).name
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return cwd.name
+
+
+def save_project(folder: Path, project: Project) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / PROJECT_FILE
+    tmp = target.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(project.to_dict(), indent=2))
+    tmp.replace(target)
+
+
+def load_project(folder: Path) -> Project:
+    data = json.loads((folder / PROJECT_FILE).read_text())
+    return Project.from_dict(data)
+
+
+def create_project(folder: Path, name: str) -> Project:
+    if (folder / PROJECT_FILE).exists():
+        raise FileExistsError(f"project already exists at {folder}")
+    (folder / "screens").mkdir(parents=True, exist_ok=True)
+    (folder / "exports").mkdir(parents=True, exist_ok=True)
+    project = Project(name=name)
+    save_project(folder, project)
+    return project
+
+
+def import_image(folder: Path, source: Path, index: int, name: str) -> str:
+    """Copy a source image into the project's screens/ folder and return its relative path."""
+    dest_dir = folder / "screens"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in name).strip("-") or "screen"
+    dest = dest_dir / f"{index:02d}-{safe}.png"
+    if source.suffix.lower() == ".png":
+        shutil.copyfile(source, dest)
+    else:
+        _convert_to_png(source, dest)
+    return str(dest.relative_to(folder))
+
+
+def _convert_to_png(source: Path, dest: Path) -> None:
+    from PySide6.QtGui import QImage
+
+    image = QImage(str(source))
+    if image.isNull():
+        raise ValueError(f"cannot read image: {source}")
+    if not image.save(str(dest), "PNG"):
+        raise OSError(f"cannot write {dest}")
+
+
+def recent_path() -> Path:
+    return state_dir() / "recent.json"
+
+
+def list_recent() -> list[str]:
+    path = recent_path()
+    if not path.exists():
+        return []
+    return [p for p in json.loads(path.read_text()) if (Path(p) / PROJECT_FILE).exists()]
+
+
+def add_recent(folder: Path) -> None:
+    entries = [str(folder)] + [p for p in list_recent() if p != str(folder)]
+    recent_path().write_text(json.dumps(entries[:RECENT_LIMIT], indent=2))

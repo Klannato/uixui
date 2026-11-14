@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uispec"
+version = "0.1.0"
+description = "Annotate UI screenshots and hand specs to coding agents"
+requires-python = ">=3.10"
+dependencies = ["PySide6>=6.6"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+uispec = "uispec.cli:main"
+uispec-app = "uispec.gui.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+uispec = ["skill/ui-spec/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
