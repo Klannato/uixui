@@ -1,12 +1,12 @@
-# uispec
+# UI X UI
 
 **Annotate UI screenshots and hand the spec to your coding agent.**
 
-uispec is a desktop editor for describing how a user interface should look and behave. Draw numbered
+UI X UI is a desktop editor for describing how a user interface should look and behave. Draw numbered
 elements over a screenshot of any app, describe each one in depth, and export a spec bundle that
-an agent can read and implement.
+an agent can read and implement. (The command-line tool and Python package are named `uispec`.)
 
-![uispec in dark mode](docs/screenshot-dark.png)
+![UI X UI in dark mode](docs/screenshot-dark.png)
 
 ## Features
 
@@ -25,6 +25,7 @@ an agent can read and implement.
 - **Agent control:** a `uispec` command drives the running app over a token-guarded localhost API, so an agent can add, edit, align, texture, and export elements while you watch.
 - **Undo and redo** for every change, including the ones made by agents.
 - **Material Design UI:** dark and light themes, icon toolbars, and a tooltip on every control.
+- **Application launcher:** `uispec app install` adds "UI X UI" to your desktop's app launcher with an icon, so you can start it like any other app. `uispec app uninstall` removes it.
 
 ## Install
 
@@ -37,6 +38,7 @@ python3 -m venv venv
 ./venv/bin/pip install -e '.[test]'
 ln -sfn "$PWD/venv/bin/uispec" ~/.local/bin/uispec
 uispec skill install          # installs the ui-spec agent skill
+uispec app install            # adds "UI X UI" to your application launcher
 ```
 
 ## Quick start
@@ -71,6 +73,7 @@ src/uispec/
   exporter.py    spec.md, annotated PNGs, element JSON
   render.py      drawing for the canvas and exports
   capture.py     screenshot portal for region capture
+  desktop.py     application-launcher entry and icon
   gui/           Qt (PySide6) window, canvas, panels, Material theme
   skill/         the ui-spec agent skill
 tests/           unit and command-level tests

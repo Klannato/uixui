@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "uispec"
-version = "0.3.0"
+version = "0.4.0"
 description = "Annotate UI screenshots and hand specs to coding agents"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -40,7 +40,7 @@ uispec-app = "uispec.gui.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-uispec = ["skill/ui-spec/*.md"]
+uispec = ["skill/ui-spec/*.md", "gui/assets/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

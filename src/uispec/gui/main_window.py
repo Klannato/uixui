@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QTabWidget, QToolBar, QToolButton, QVBoxLayout, QWidget,
 )
 
-from .. import store
+from .. import APP_NAME, store
 from ..commands import ASYNC, COMMANDS, CommandError, add_screen_from_file
 from ..controller import Controller
 from . import theme
@@ -49,7 +49,7 @@ class StartPage(QWidget):
         buttons.addWidget(open_btn)
         buttons.addStretch(1)
 
-        title = QLabel("uispec")
+        title = QLabel(APP_NAME)
         title.setObjectName("sectionTitle")
         title.setStyleSheet("font-size: 22pt; font-weight: 600;")
         tagline = QLabel("Annotate screenshots and hand the spec to your coding agent.")
@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ctrl = ctrl
         self.setAcceptDrops(True)
-        self.setWindowTitle("uispec")
+        self.setWindowTitle(APP_NAME)
         self.resize(1400, 900)
         self._themed: list[tuple[QAction, str, str]] = []
 
@@ -311,10 +311,10 @@ class MainWindow(QMainWindow):
         if not self.ctrl.is_open:
             self.start_page.refresh()
             self.stack.setCurrentWidget(self.start_page)
-            self.setWindowTitle("uispec")
+            self.setWindowTitle(APP_NAME)
             return
         self.stack.setCurrentIndex(1)
-        self.setWindowTitle(f"{self.ctrl.project.name} — uispec")
+        self.setWindowTitle(f"{self.ctrl.project.name} — {APP_NAME}")
         self.screens.refresh()
         self.canvas.refresh()
         self.elements.refresh(self.canvas.selection)

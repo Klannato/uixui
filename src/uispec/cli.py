@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import api, store
+from . import APP_NAME, api, desktop, store
 
 SKILL_SOURCE = Path(__file__).parent / "skill" / "ui-spec"
 DEFAULT_SKILL_TARGET = Path.home() / ".config" / "opencode" / "skills" / "ui-spec"
@@ -96,6 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     app_open.add_argument("--project", type=Path)
     app.add_parser("status")
     app.add_parser("quit")
+    app.add_parser("install", help=f'add "{APP_NAME}" to the application launcher (per user)')
+    app.add_parser("uninstall", help="remove the launcher entry and icons")
 
     project = sub.add_parser("project", help="projects").add_subparsers(dest="cmd", required=True)
     pnew = project.add_parser("new", help="create a project and open it")
@@ -218,6 +220,10 @@ def run(args: argparse.Namespace):
             return send("app.status") if _ping() else {"running": False}
         if c == "quit":
             return send("app.quit") if _ping() else {"running": False}
+        if c == "install":
+            return desktop.install()
+        if c == "uninstall":
+            return desktop.uninstall()
 
     if g == "project":
         if c == "new":
