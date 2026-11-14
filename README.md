@@ -32,8 +32,8 @@ an agent can read and implement. (The command-line tool and Python package are n
 Requires Python 3.10+ and a desktop session (Linux tested; Qt should run on macOS and Windows, but only Linux is verified).
 
 ```bash
-git clone https://github.com/Klannato/uispec.git
-cd uispec
+git clone https://github.com/Klannato/uixui.git
+cd uixui
 python3 -m venv venv
 ./venv/bin/pip install -e '.[test]'
 ln -sfn "$PWD/venv/bin/uispec" ~/.local/bin/uispec
