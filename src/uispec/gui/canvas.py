@@ -10,9 +10,10 @@ from ..commands import COMMANDS, CommandError
 from ..controller import Controller
 from ..model import Element
 from ..render import ACCENT, PIN_RADIUS, draw_screen_marks
+from . import theme
+from .help import HINTS
 
 TOOLS = ("select", "rect", "ellipse", "freehand", "arrow", "text")
-BACKGROUND = QColor("#1e1e1e")
 HIT_MARGIN = 6
 
 
@@ -90,11 +91,10 @@ class Canvas(QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.fillRect(self.rect(), BACKGROUND)
+        p.fillRect(self.rect(), QColor(theme.colors()["canvas"]))
         if self._image is None or self._image.isNull():
-            p.setPen(QColor("#aaaaaa"))
-            p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter,
-                       "Paste or drop a screenshot, or capture a region")
+            p.setPen(QColor(theme.colors()["on_variant"]))
+            p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, HINTS["canvas_empty"])
             p.end()
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)

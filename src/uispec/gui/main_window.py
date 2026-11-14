@@ -4,22 +4,30 @@ import datetime as dt
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QActionGroup, QDragEnterEvent, QDropEvent, QGuiApplication, QKeySequence
+from PySide6.QtGui import (
+    QAction, QActionGroup, QDragEnterEvent, QDropEvent, QGuiApplication, QKeySequence,
+)
 from PySide6.QtWidgets import (
-    QFileDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget, QListWidgetItem, QMainWindow,
-    QMessageBox, QPushButton, QSplitter, QStackedWidget, QTabWidget, QVBoxLayout, QWidget,
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QListWidget, QListWidgetItem,
+    QMainWindow, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStackedWidget,
+    QTabWidget, QToolBar, QVBoxLayout, QWidget,
 )
 
 from .. import store
 from ..commands import ASYNC, COMMANDS, CommandError, add_screen_from_file
 from ..controller import Controller
+from . import theme
 from .canvas import TOOLS, Canvas
-from .panels import ElementPanel, ProjectPanel, ScreenPanel
+from .help import TIPS
+from .panels import ElementPanel, ProjectPanel, ScreenPanel, card, section
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 TOOL_KEYS = {"select": "V", "rect": "R", "ellipse": "E", "freehand": "F", "arrow": "A", "text": "T"}
 TOOL_LABELS = {"select": "Select", "rect": "Rectangle", "ellipse": "Ellipse",
                "freehand": "Freehand", "arrow": "Arrow", "text": "Text note"}
+TOOL_ICONS = {"select": "mdi6.cursor-default-outline", "rect": "mdi6.rectangle-outline",
+              "ellipse": "mdi6.ellipse-outline", "freehand": "mdi6.gesture",
+              "arrow": "mdi6.arrow-top-right", "text": "mdi6.format-text"}
 
 
 class StartPage(QWidget):
@@ -27,20 +35,41 @@ class StartPage(QWidget):
         super().__init__()
         self.window = window
         self.recent = QListWidget()
+        self.recent.setToolTip("Double-click a project to open it.")
         self.recent.itemDoubleClicked.connect(self._open_item)
-        new_btn = QPushButton("New project…")
+        new_btn = QPushButton("New project")
+        new_btn.setProperty("variant", "filled")
+        new_btn.setToolTip(TIPS["new_project"])
         new_btn.clicked.connect(window.new_project)
-        open_btn = QPushButton("Open folder…")
+        open_btn = QPushButton("Open folder")
+        open_btn.setToolTip(TIPS["open_project"])
         open_btn.clicked.connect(window.open_folder)
         buttons = QHBoxLayout()
         buttons.addWidget(new_btn)
         buttons.addWidget(open_btn)
-        layout = QVBoxLayout(self)
-        title = QLabel("<h2>uispec</h2><p>Annotate screenshots and hand them to an agent.</p>")
-        layout.addWidget(title)
-        layout.addWidget(QLabel("Recent projects"))
-        layout.addWidget(self.recent)
-        layout.addLayout(buttons)
+        buttons.addStretch(1)
+
+        title = QLabel("uispec")
+        title.setObjectName("sectionTitle")
+        title.setStyleSheet("font-size: 22pt; font-weight: 600;")
+        tagline = QLabel("Annotate screenshots and hand the spec to your coding agent.")
+        tagline.setObjectName("hint")
+
+        body = QVBoxLayout()
+        body.setSpacing(12)
+        body.addWidget(title)
+        body.addWidget(tagline)
+        body.addSpacing(12)
+        body.addWidget(section("Recent projects", "Projects you have opened lately."))
+        body.addWidget(self.recent, 1)
+        body.addLayout(buttons)
+
+        wrapper = QWidget()
+        wrapper.setObjectName("card")
+        wrapper.setLayout(body)
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(120, 60, 120, 60)
+        outer.addWidget(wrapper)
 
     def refresh(self) -> None:
         self.recent.clear()
@@ -60,6 +89,7 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
         self.setWindowTitle("uispec")
         self.resize(1400, 900)
+        self._themed: list[tuple[QAction, str, str]] = []
 
         self.start_page = StartPage(self)
         self.canvas = Canvas(ctrl)
@@ -67,28 +97,40 @@ class MainWindow(QMainWindow):
         self.elements = ElementPanel(ctrl)
         self.project = ProjectPanel(ctrl)
 
-        right = QTabWidget()
-        right.addTab(self.elements, "Element")
-        right.addTab(self.project, "Project")
+        canvas_frame = QWidget()
+        canvas_frame.setObjectName("canvasFrame")
+        frame_layout = QVBoxLayout(canvas_frame)
+        frame_layout.setContentsMargins(12, 12, 12, 12)
+        frame_layout.addWidget(self.canvas)
 
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.addWidget(self.screens)
+        left = card(self.screens)
+        right_tabs = QTabWidget()
+        right_tabs.setDocumentMode(True)
+        right_tabs.addTab(self._scroll_page(self.elements), "Element")
+        right_tabs.addTab(self._scroll_page(self.project), "Project")
+        right_tabs.setToolTip("Element: describe the selected element.\nProject: brief and design tokens.")
+        right = card(right_tabs)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
         splitter.addWidget(left)
-        splitter.addWidget(self.canvas)
+        splitter.addWidget(canvas_frame)
         splitter.addWidget(right)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([260, 880, 360])
+        splitter.setSizes([260, 760, 460])
+
+        workspace = QWidget()
+        workspace_layout = QVBoxLayout(workspace)
+        workspace_layout.setContentsMargins(12, 12, 12, 12)
+        workspace_layout.addWidget(splitter)
 
         self.stack = QStackedWidget()
         self.stack.addWidget(self.start_page)
-        self.stack.addWidget(splitter)
+        self.stack.addWidget(workspace)
         self.setCentralWidget(self.stack)
 
         self._build_actions()
-        self.statusBar()
+        self.statusBar().showMessage("Ready. Hover any control for a short explanation.")
 
         self.canvas.selectionChanged.connect(self.elements.select_number)
         self.elements.selected.connect(self.canvas.select)
@@ -102,27 +144,68 @@ class MainWindow(QMainWindow):
         ctrl.opened.connect(self.refresh)
         self.refresh()
 
-    # ---- actions ----------------------------------------------------------
+    @staticmethod
+    def _scroll_page(widget: QWidget) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.addWidget(widget)
+        area = QScrollArea()
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        area.setWidgetResizable(True)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        area.setWidget(page)
+        area.viewport().setAutoFillBackground(False)
+        page.setAutoFillBackground(False)
+        return area
+
+    # ---- actions and toolbar ------------------------------------------------
+
+    def _action(self, text: str, icon: str, tip: str, slot, shortcut: str | None = None,
+                color_key: str = "on_variant") -> QAction:
+        act = QAction(text, self)
+        act.setToolTip(tip)
+        act.setStatusTip(tip.replace("<br>", " ").replace("<b>", "").replace("</b>", ""))
+        if shortcut:
+            act.setShortcut(QKeySequence(shortcut))
+        act.triggered.connect(slot)
+        act.setIcon(theme.icon(icon, color_key))
+        self._themed.append((act, icon, color_key))
+        self.addAction(act)
+        return act
 
     def _build_actions(self) -> None:
-        bar = self.addToolBar("Main")
-        bar.setMovable(False)
+        top = QToolBar("Project")
+        top.setObjectName("topBar")
+        top.setMovable(False)
+        top.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBar(top)
 
-        def action(text, slot, shortcut=None):
-            act = QAction(text, self)
-            if shortcut:
-                act.setShortcut(QKeySequence(shortcut))
-            act.triggered.connect(slot)
-            self.addAction(act)
-            return act
+        top.addAction(self._action("New project", "mdi6.plus", TIPS["new_project"], self.new_project))
+        top.addAction(self._action("Open", "mdi6.folder-open-outline", TIPS["open_project"], self.open_folder))
+        top.addSeparator()
+        top.addAction(self._action("Paste", "mdi6.content-paste", TIPS["paste"], self.paste_image, "Ctrl+V"))
+        top.addAction(self._action("Add image", "mdi6.image-plus", TIPS["add_image"], self.add_image_file))
+        top.addAction(self._action("Capture", "mdi6.monitor-screenshot", TIPS["capture"], self.capture_region))
 
-        bar.addAction(action("New project", self.new_project))
-        bar.addAction(action("Open", self.open_folder))
-        bar.addSeparator()
-        bar.addAction(action("Paste", self.paste_image, "Ctrl+V"))
-        bar.addAction(action("Add image…", self.add_image_file))
-        bar.addAction(action("Capture region", self.capture_region))
-        bar.addSeparator()
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        top.addWidget(spacer)
+
+        top.addAction(self._action("Copy prompt", "mdi6.robot-outline", TIPS["copy_prompt"], self.copy_prompt))
+        export_action = self._action("Export", "mdi6.export-variant", TIPS["export"], self.export,
+                                     color_key="on_primary")
+        top.addAction(export_action)
+        top.widgetForAction(export_action).setObjectName("primaryAction")
+        top.addSeparator()
+        top.addAction(self._action("Theme", "mdi6.theme-light-dark", TIPS["theme"], self.toggle_theme))
+
+        tools = QToolBar("Tools")
+        tools.setObjectName("toolBar")
+        tools.setMovable(False)
+        tools.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBarBreak()
+        self.addToolBar(tools)
 
         group = QActionGroup(self)
         group.setExclusive(True)
@@ -130,19 +213,32 @@ class MainWindow(QMainWindow):
             act = QAction(f"{TOOL_LABELS[tool]} ({TOOL_KEYS[tool]})", self)
             act.setCheckable(True)
             act.setShortcut(QKeySequence(TOOL_KEYS[tool]))
+            act.setToolTip(TIPS[f"tool_{tool}"])
+            act.setStatusTip(f"{TOOL_LABELS[tool]} tool ({TOOL_KEYS[tool]})")
             act.setChecked(tool == "select")
+            act.setIcon(theme.icon(TOOL_ICONS[tool]))
+            self._themed.append((act, TOOL_ICONS[tool], "on_variant"))
             act.triggered.connect(lambda _checked=False, t=tool: self.canvas.set_tool(t))
             group.addAction(act)
             self.addAction(act)
-            bar.addAction(act)
-        bar.addSeparator()
-        self.undo_action = action("Undo", self.undo, "Ctrl+Z")
-        self.redo_action = action("Redo", self.redo, "Ctrl+Shift+Z")
-        bar.addAction(self.undo_action)
-        bar.addAction(self.redo_action)
-        bar.addSeparator()
-        bar.addAction(action("Export", self.export))
-        bar.addAction(action("Copy agent prompt", self.copy_prompt))
+            tools.addAction(act)
+        tools.addSeparator()
+
+        self.undo_action = self._action("Undo", "mdi6.undo", TIPS["undo"], self.undo, "Ctrl+Z")
+        self.redo_action = self._action("Redo", "mdi6.redo", TIPS["redo"], self.redo, "Ctrl+Shift+Z")
+        tools.addAction(self.undo_action)
+        tools.addAction(self.redo_action)
+
+    def toggle_theme(self) -> None:
+        theme.toggle()
+        QApplication.instance().setStyleSheet(theme.stylesheet())
+        self._restyle()
+        self.show_message(f"{theme.mode().capitalize()} theme")
+
+    def _restyle(self) -> None:
+        for act, icon, color_key in self._themed:
+            act.setIcon(theme.icon(icon, color_key))
+        self.canvas.update()
 
     # ---- refresh -----------------------------------------------------------
 
@@ -153,7 +249,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle("uispec")
             return
         self.stack.setCurrentIndex(1)
-        self.setWindowTitle(f"uispec — {self.ctrl.project.name}")
+        self.setWindowTitle(f"{self.ctrl.project.name} — uispec")
         self.screens.refresh()
         self.canvas.refresh()
         self.elements.refresh(self.canvas.selected)
@@ -201,7 +297,8 @@ class MainWindow(QMainWindow):
     def add_image_file(self) -> None:
         if not self.ctrl.is_open:
             return self.show_message("Open or create a project first")
-        path, _ = QFileDialog.getOpenFileName(self, "Add screenshot", "", "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif)")
+        path, _ = QFileDialog.getOpenFileName(self, "Add screenshot", "",
+                                              "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif)")
         if path:
             self._add_file(Path(path))
 

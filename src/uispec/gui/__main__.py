@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from ..api import read_api_file, start_server, stop_server
 from ..controller import Controller
+from . import theme
 from .main_window import MainWindow
 
 
@@ -30,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
 
     app = QApplication(sys.argv[:1])
     app.setApplicationName("uispec")
+    theme.load_mode()
+    app.setStyleSheet(theme.stylesheet())
 
     pid = _already_running()
     if pid is not None:
