@@ -259,7 +259,7 @@ QToolTip {{
     background: {c['inverse_surface']};
     color: {c['inverse_on']};
     border: none;
-    padding: 1px 4px;
+    padding: 0px;
     margin: 0px;
     border-radius: 4px;
 }}
