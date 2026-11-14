@@ -210,10 +210,10 @@ def test_texture_export_writes_scaled_pattern(tmp_path, qapp, sample_png):
     out = run(ctrl, "element.texture_export", {"number": 1, "out": str(tmp_path / "baked.png")})
     assert out["size"] == [128, 128]
     assert Path(out["path"]).exists()
-    img = QImage(out["path"])
+    img = QImage(out["path"]).convertToFormat(QImage.Format.Format_ARGB32)
     assert (img.width(), img.height()) == (128, 128)
     # Dots peak at alpha 190; at half opacity the strongest pixel lands at 95.
-    assert max(img.pixelColor(x, y).alpha() for x in range(128) for y in range(128)) == 95
+    assert max(memoryview(img.bits())[3::4]) == 95
 
 
 def test_texture_export_writes_tinted_image_at_natural_size(tmp_path, qapp, sample_png):

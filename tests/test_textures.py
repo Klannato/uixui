@@ -36,7 +36,7 @@ def test_baked_pattern_scales_and_folds_opacity(qapp):
     img = baked_image({"kind": "pattern", "pattern": "dots", "color": "#ffcc00",
                        "scale": 2.0, "opacity": 0.5}, None)
     assert (img.width(), img.height()) == (128, 128)
-    assert max(img.pixelColor(x, y).alpha() for x in range(128) for y in range(128)) == 95
+    assert max(memoryview(img.bits())[3::4]) == 95
 
 
 def test_baked_image_keeps_natural_size_and_applies_tint(qapp, sample_png):

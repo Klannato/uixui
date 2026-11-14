@@ -98,12 +98,14 @@ def baked_image(texture: dict, folder: Path | None) -> QImage:
 
 
 def _apply_alpha(image: QImage, factor: float) -> QImage:
+    """Scale every pixel's alpha.
+
+    Works on the raw buffer rather than pixel by pixel: building a Python object per pixel is
+    needlessly slow and, on CPython 3.10, its allocation churn can trip a PySide6 teardown bug."""
     out = image.convertToFormat(QImage.Format.Format_ARGB32)
-    for y in range(out.height()):
-        for x in range(out.width()):
-            color = out.pixelColor(x, y)
-            color.setAlpha(round(color.alpha() * factor))
-            out.setPixelColor(x, y, color)
+    buf = memoryview(out.bits())
+    # ARGB32 is BGRA in memory, so alpha is every fourth byte.
+    buf[3::4] = bytes(round(value * factor) for value in buf[3::4])
     return out
 
 
