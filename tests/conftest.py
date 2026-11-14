@@ -32,7 +32,23 @@ def sample_png(tmp_path):
     return path
 
 
+_exit = {"code": 0}
+
+
 def pytest_sessionfinish(session, exitstatus):
     from uispec import textures
 
     textures.clear_caches()
+    _exit["code"] = exitstatus
+
+
+def pytest_unconfigure(config):
+    # On CPython 3.10, PySide6 can abort while the interpreter shuts down, after every test has
+    # passed (seen in CI as "Fatal Python error: none_dealloc"). Results are final by this point,
+    # so exit directly with the test status instead of letting that teardown run.
+    import os
+    import sys
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(_exit["code"])
