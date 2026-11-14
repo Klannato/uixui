@@ -7,7 +7,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import APP_ID, APP_NAME
+from . import APP_ID, APP_NAME, APP_SCRIPT
 
 ASSET_DIR = Path(__file__).parent / "gui" / "assets"
 ICON_SVG = ASSET_DIR / f"{APP_ID}.svg"
@@ -42,14 +42,13 @@ def png_icon(size: int) -> Path:
 
 def exec_command() -> str:
     """Absolute path to the app executable, preferring the one beside this command."""
-    script = f"{APP_ID}-app"
-    beside = Path(sys.argv[0]).resolve().with_name(script)
+    beside = Path(sys.argv[0]).resolve().with_name(APP_SCRIPT)
     if beside.exists():
         return str(beside)
-    found = shutil.which(script)
+    found = shutil.which(APP_SCRIPT)
     if found:
         return found
-    return str(Path(sys.executable).with_name(script))
+    return str(Path(sys.executable).with_name(APP_SCRIPT))
 
 
 def desktop_entry(command: str | None = None) -> str:

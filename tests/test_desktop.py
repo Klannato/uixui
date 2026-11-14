@@ -10,12 +10,13 @@ def test_install_and_uninstall_launcher(tmp_path, monkeypatch, qapp):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     from uispec import desktop
 
-    result = desktop.install("/usr/bin/uixui-app")
+    result = desktop.install("/usr/bin/uispec-app")
 
     entry = (tmp_path / "data" / "applications" / "uixui.desktop").read_text()
     assert "Name=UI X UI" in entry
-    assert "Exec=/usr/bin/uixui-app" in entry
+    assert "Exec=/usr/bin/uispec-app" in entry
     assert "Icon=uixui" in entry
+    assert "StartupWMClass=uixui" in entry
     assert "Terminal=false" in entry
 
     assert (tmp_path / "data" / "icons" / "hicolor" / "scalable" / "apps" / "uixui.svg").exists()
@@ -32,5 +33,5 @@ def test_exec_command_is_an_absolute_path():
     from uispec import desktop
 
     command = desktop.exec_command()
-    assert command.endswith("uixui-app")
+    assert command.endswith("uispec-app")
     assert "/" in command
