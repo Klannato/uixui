@@ -28,3 +28,22 @@ def test_unknown_pattern_is_rejected():
 
     with pytest.raises(ValueError):
         pattern_tile("waves", "#000000")
+
+
+def test_baked_pattern_scales_and_folds_opacity(qapp):
+    from uispec.textures import baked_image
+
+    img = baked_image({"kind": "pattern", "pattern": "dots", "color": "#ffcc00",
+                       "scale": 2.0, "opacity": 0.5}, None)
+    assert (img.width(), img.height()) == (128, 128)
+    assert max(img.pixelColor(x, y).alpha() for x in range(128) for y in range(128)) == 95
+
+
+def test_baked_image_keeps_natural_size_and_applies_tint(qapp, sample_png):
+    from uispec.textures import baked_image
+
+    img = baked_image({"kind": "image", "file": str(sample_png), "mode": "stretch",
+                       "opacity": 1.0, "tint": "#3366ff"}, sample_png.parent)
+    assert (img.width(), img.height()) == (400, 300)
+    c = img.pixelColor(10, 10)
+    assert (c.red(), c.green(), c.blue(), c.alpha()) == (0x33, 0x66, 0xFF, 255)

@@ -165,6 +165,8 @@ def build_parser() -> argparse.ArgumentParser:
     etex.add_argument("--scale", type=float, help="0.05 to 20; 1 is original size")
     etex.add_argument("--opacity", type=float, help="0 to 1")
     etex.add_argument("--tint", help="optional #rrggbb wash over the texture; pass '' to remove")
+    etex.add_argument("--export", type=Path, metavar="PATH",
+                      help="write the finished texture to PATH so it can be baked into an app")
     edel = element.add_parser("delete")
     edel.add_argument("number", type=int)
     edel.add_argument("--screen")
@@ -282,18 +284,30 @@ def run(args: argparse.Namespace):
             numbers = [int(n) for n in args.numbers.split(",") if n.strip()]
             return send("element.align", {"screen": args.screen, "numbers": numbers, "mode": args.mode})
         if c == "texture":
+            changed = args.clear or any(
+                getattr(args, key) is not None for key in ("file", "pattern", "color", "mode", "scale",
+                                                           "opacity", "tint"))
+            result = None
             if args.clear:
-                return send("element.texture", {"screen": args.screen, "number": args.number, "clear": True})
-            payload = {"screen": args.screen, "number": args.number}
-            if args.file:
-                payload["file"] = str(args.file.expanduser())
-            if args.pattern:
-                payload["pattern"] = args.pattern
-            for key in ("color", "mode", "scale", "opacity", "tint"):
-                value = getattr(args, key)
-                if value is not None:
-                    payload[key] = value
-            return send("element.texture", payload)
+                result = send("element.texture",
+                              {"screen": args.screen, "number": args.number, "clear": True})
+            elif changed:
+                payload = {"screen": args.screen, "number": args.number}
+                if args.file:
+                    payload["file"] = str(args.file.expanduser())
+                if args.pattern:
+                    payload["pattern"] = args.pattern
+                for key in ("color", "mode", "scale", "opacity", "tint"):
+                    value = getattr(args, key)
+                    if value is not None:
+                        payload[key] = value
+                result = send("element.texture", payload)
+            if args.export:
+                return send("element.texture_export",
+                            {"screen": args.screen, "number": args.number, "out": str(args.export.expanduser())})
+            if not changed:
+                raise CliError("give --file, --pattern, or --clear to set a texture, or --export to write it out")
+            return result
         if c == "resize":
             return send("element.resize", {"screen": args.screen, "number": args.number, "box": _box(args.box)})
         if c == "delete":

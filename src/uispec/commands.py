@@ -426,6 +426,30 @@ def element_texture(ctrl: Controller, args: dict):
     return {"element": number, "texture": current}
 
 
+@command("element.texture_export")
+def element_texture_export(ctrl: Controller, args: dict):
+    """Write an element's finished texture to a file, for baking into an app as a placeholder."""
+    from .textures import baked_image
+
+    screen = resolve_screen(ctrl, args.get("screen"))
+    number = _number(args)
+    element = screen.element(number)
+    if element is None:
+        raise CommandError(f"no element {number} on {screen.name}")
+    if not element.texture:
+        raise CommandError(f"element {number} has no texture; set one with `uispec element texture`")
+    if not args.get("out"):
+        raise CommandError("give --out PATH")
+    out = Path(args["out"]).expanduser()
+    image = baked_image(element.texture, ctrl.folder)
+    if image.isNull():
+        raise CommandError("could not build the texture image")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not image.save(str(out), "PNG"):
+        raise CommandError(f"cannot write {out}")
+    return {"path": str(out), "size": [image.width(), image.height()], "texture": element.texture}
+
+
 @command("arrow.add")
 def arrow_add(ctrl: Controller, args: dict):
     screen = resolve_screen(ctrl, args.get("screen"))

@@ -16,7 +16,7 @@ an agent can read and implement.
 - **Auto-save:** element descriptions and the project brief save as soon as you click away, switch screens, or export. The Save buttons remain if you prefer to save immediately.
 - **Layout grid:** a per-project grid (default 8px) that drawing, moving, and resizing snap to. Toggle the overlay with G and snapping with S. The grid is written to the spec so agents space elements the same way.
 - **Align and distribute:** Shift-click or drag a box to select several elements, then align edges or centers, or space three or more evenly.
-- **Textures:** fill an element with an image (tiled or stretched, with opacity and tint) or a built-in seamless pattern (noise, grain, stripes, dots, hatch). Textures are clipped to the shape and appear in the annotated PNG.
+- **Textures:** fill an element with an image (tiled or stretched, with opacity and tint) or a built-in seamless pattern (noise, grain, stripes, dots, hatch). Textures are clipped to the shape and appear in the annotated PNG. Export a finished texture with `uispec element texture N --export out.png`, so an agent can bake it into the element as a placeholder.
 - **Resize and move:** drag the handles on a selected element to resize it, drag its pin to resize from the top-left, or drag the body to move it. Agents can resize with `uispec element resize`.
 - **Structured descriptions:** name, purpose, behavior, states (checklist plus custom), content, constraints, notes, and a reference link.
 - **Flows:** order screens by drag and drop, add a "leads to" note, and draw arrows between elements.

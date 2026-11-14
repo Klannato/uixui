@@ -80,6 +80,33 @@ def texture_image(texture: dict, folder: Path | None) -> QImage:
     return image
 
 
+def baked_image(texture: dict, folder: Path | None) -> QImage:
+    """The finished texture as a standalone image, ready to drop into an app as a placeholder.
+
+    Tint is composited and opacity is folded into the alpha, so the file already looks the way
+    the element should. Patterns are scaled so their cells match the app's scale."""
+    image = texture_image(texture, folder)
+    if texture.get("kind") == "pattern":
+        scale = float(texture.get("scale", 1.0))
+        size = max(1, round(image.width() * scale))
+        image = image.scaled(size, size, Qt.AspectRatioMode.IgnoreAspectRatio,
+                             Qt.TransformationMode.FastTransformation)
+    opacity = float(texture.get("opacity", 1.0))
+    if opacity < 1.0:
+        image = _apply_alpha(image, opacity)
+    return image
+
+
+def _apply_alpha(image: QImage, factor: float) -> QImage:
+    out = image.convertToFormat(QImage.Format.Format_ARGB32)
+    for y in range(out.height()):
+        for x in range(out.width()):
+            color = out.pixelColor(x, y)
+            color.setAlpha(round(color.alpha() * factor))
+            out.setPixelColor(x, y, color)
+    return out
+
+
 def fill(p: QPainter, texture: dict, rect, shape, folder: Path | None) -> None:
     """Paint the texture inside `shape` (a QPainterPath) covering `rect` (a QRectF)."""
     image = texture_image(texture, folder)

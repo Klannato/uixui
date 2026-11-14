@@ -1,6 +1,6 @@
 ---
 name: ui-spec
-description: Use whenever you build, change, or review a user interface. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it. Also offers to open the annotator when no spec exists yet.
+description: Use whenever you build, change, or review a user interface. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it, baking each texture into its element as a placeholder. Also offers to open the annotator when no spec exists yet.
 ---
 
 # ui-spec
@@ -23,9 +23,9 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
 - **Layout grid** (`## Layout grid` in `spec.md`) is the spacing system. Place and size elements on multiples of the grid size, e.g. 8px. If snapping is on, the user drew elements on the grid on purpose.
 - **Screen flow** gives the order and the transitions (`leads to`).
 - **Each numbered element** has fields: name, purpose, behavior, states, content, constraints, notes, reference, and texture. Implement each one against its fields. Treat `states` as the states that must exist, not optional extras.
-- **Textures** describe what the element's surface looks like:
-  - `image` textures are picture fills. The file is in the screen folder under `textures/`. `tile` repeats it at the given scale, `stretch` fills the element once. Use the image as the background of that element, and apply the stated opacity and tint.
-  - `pattern` textures are generated surfaces (noise, grain, stripes, dots, hatch) in a color. Recreate the look with CSS, SVG, or canvas. Keep them subtle when the opacity is low.
+- **Textures** describe what the element's surface looks like. Every texture must be **baked into the element** (see Step 3), not just mentioned in a description:
+  - `image` textures are picture fills. The file is in the screen folder under `textures/`. `tile` repeats it at the given scale, `stretch` fills the element once. Apply the stated opacity and tint.
+  - `pattern` textures are generated surfaces (noise, grain, stripes, dots, hatch) in a color. Recreate the look as a real surface; do not leave it as a flat color.
   - A texture is a background fill. Text and controls on top of it must stay readable.
 - **Arrows** describe relationships between elements. Respect them when wiring navigation or data flow.
 - **Screen notes** are free-form context for that screen.
@@ -36,12 +36,19 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
 - Build each numbered element as described. Keep the element's number in code comments or test names when it helps trace back to the spec.
 - Use the grid size for spacing between elements. Line up elements the way the annotations show; elements the user aligned in the app share an edge or a center.
 - Do not add elements, states, copy, or textures that are not in the spec without asking.
+- **Bake every texture into its element as a placeholder.** A texture that is only described tends to come out as a flat color, so the element must carry the real texture pixels:
+  1. Get the exact finished texture from the annotator:
+     `uispec element texture N --export /path/to/element-N-placeholder.png`
+     This writes the image with its tint and opacity already applied, or the rendered pattern tile at its scale. Prefer it over re-deriving the pattern or tint by hand.
+  2. Copy that file into the app's own assets (for example `assets/`) and set it as the element's real background, so the running app never depends on `~/ui-specs`. If the project avoids asset files, generate the pattern in code (CSS gradients or an inline SVG) to match the exported pixels.
+  3. Flag it as a placeholder: name the asset so it is obviously a stand-in (e.g. `element-3-placeholder.png`) and add a short comment like `TODO: replace placeholder texture with real art`. The user will swap in real artwork later.
 
 ## Step 4: verify against the annotations
 
 1. Render or run the UI.
 2. Compare the result with `annotated.png` for each screen, element by element. Check positions, grid alignment, and textures.
-3. Report mismatches to the user. Do not silently diverge from the spec. If the spec seems wrong, say which element and why.
+3. For every element with a texture, confirm the texture is baked into the code and matches the annotation: same pattern or image, color, opacity, and tint. Report any element whose texture is missing, still a flat color, or baked with the wrong settings, and the element number so the user can fix the spec or the code.
+4. Report mismatches to the user. Do not silently diverge from the spec. If the spec seems wrong, say which element and why.
 
 ## Working with the annotator
 
@@ -63,6 +70,7 @@ All changes go through the `uispec` command. It talks to the running app and sta
 - `uispec element texture N --pattern noise|grain|stripes|dots|hatch [--color "#ccc"] [--scale 1] [--opacity 0.4]`
 - `uispec element texture N --scale 2` (or any other setting) changes an existing texture without re-picking it
 - `uispec element texture N --clear` removes the texture
+- `uispec element texture N --export PATH` writes the element's finished texture to PATH (image with tint and opacity applied, or the rendered pattern tile) so it can be baked into the app as a placeholder
 - `uispec element delete N`
 
 **Arrows, notes, and rendering**
