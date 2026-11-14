@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from ..api import read_api_file, start_server, stop_server
 from ..controller import Controller
+from .. import textures
 from . import theme
 from .main_window import MainWindow
 
@@ -43,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     window = MainWindow(ctrl)
     server, _bridge = start_server(ctrl)
     app.aboutToQuit.connect(lambda: stop_server(server))
+    app.aboutToQuit.connect(textures.clear_caches)
     ctrl.quit_requested.connect(app.quit)
 
     if args.project is not None:

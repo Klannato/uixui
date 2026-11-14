@@ -30,3 +30,9 @@ def sample_png(tmp_path):
     img.fill(QColor("#f5f5f5"))
     img.save(str(path), "PNG")
     return path
+
+
+def pytest_sessionfinish(session, exitstatus):
+    from uispec import textures
+
+    textures.clear_caches()

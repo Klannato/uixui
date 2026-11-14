@@ -15,6 +15,12 @@ _image_cache: dict[str, QImage] = {}
 _pattern_cache: dict[tuple[str, str], QImage] = {}
 
 
+def clear_caches() -> None:
+    """Drop cached QImages. Call before the Qt application shuts down."""
+    _image_cache.clear()
+    _pattern_cache.clear()
+
+
 def pattern_tile(name: str, color: str) -> QImage:
     """A seamless PATTERN_SIZE tile. Pixel rules use modulo arithmetic, so the edges always meet."""
     key = (name, color)
