@@ -60,6 +60,33 @@ TIPS = {
     "tokens_spacing": "Spacing scale, e.g. <i>4, 8, 12, 16, 24</i>.",
     "tokens_radii": "Corner radii, e.g. <i>4 for inputs, 12 for cards</i>.",
     "save_brief": "Save the project brief and design tokens.",
+    "grid_size": "Spacing of the layout grid in image pixels. Saved with the project and written to the spec.",
+    "grid_snap": "When on, drawing, moving, and resizing snap to the grid. Hold nothing; the arrow keys "
+                 "nudge by one grid step.",
+    "save_grid": "Save the grid size and snapping setting.",
+    "grid_toggle": "<b>Show grid</b> (G)<br>Overlay the layout grid on the screenshot. Overlay only; "
+                   "it is not exported.",
+    "snap_toggle": "<b>Snap to grid</b> (S)<br>Snap drawing, moving, and resizing to the grid. Saved with "
+                   "the project.",
+    "align_left": "Align left edges to the leftmost selected element.",
+    "align_hcenter": "Align horizontal centers to the middle of the selection.",
+    "align_right": "Align right edges to the rightmost selected element.",
+    "align_dist_h": "Space three or more elements evenly from left to right.",
+    "align_top": "Align top edges to the highest selected element.",
+    "align_vcenter": "Align vertical centers to the middle of the selection.",
+    "align_bottom": "Align bottom edges to the lowest selected element.",
+    "align_dist_v": "Space three or more elements evenly from top to bottom.",
+    "texture_source": "None removes the texture. Image fills the element with a picture. Pattern uses a "
+                      "built-in seamless pattern.",
+    "texture_pick": "Choose a PNG or JPEG. It is copied into the project's textures folder.",
+    "texture_pattern": "noise, grain, stripes, dots, or hatch.",
+    "texture_color": "Pattern color, as #rrggbb.",
+    "texture_mode": "tile repeats the image at its scale. stretch fills the element once.",
+    "texture_scale": "Size of each repeat (tile) or of the pattern cells. 1 is the original size.",
+    "texture_opacity": "How strongly the texture shows. Lower values keep outlines and text readable.",
+    "texture_tint": "Optional color that washes over the image or pattern, e.g. #3366ff.",
+    "texture_apply": "Apply these texture settings to the selected element.",
+    "texture_clear": "Remove the texture from the selected element.",
 }
 
 HINTS = {
@@ -68,4 +95,7 @@ HINTS = {
     "no_screen": "Paste or add a screenshot to start a screen.",
     "project": "The brief and tokens apply to every screen. Agents read them first.",
     "canvas_empty": "Paste a screenshot (Ctrl+V), drop an image file here, or capture a region.",
+    "multi_select": "Shift-click or drag a box to select several. Use the buttons below to line them up.",
+    "texture": "Fills the selected element. Agents can set the same thing with uispec element texture.",
+    "grid": "The layout grid is part of the spec. Agents use it to space elements consistently.",
 }

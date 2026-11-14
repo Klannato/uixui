@@ -12,12 +12,15 @@ an agent can read and implement.
 
 - **Screenshots in any way you like:** paste from the clipboard, drop image files, add files, or capture a region of your screen (Wayland-safe, via the desktop portal).
 - **Numbered elements:** draw rectangles, ellipses, or freehand outlines. Each one gets a pin that the description refers to.
+- **Layout grid:** a per-project grid (default 8px) that drawing, moving, and resizing snap to. Toggle the overlay with G and snapping with S. The grid is written to the spec so agents space elements the same way.
+- **Align and distribute:** Shift-click or drag a box to select several elements, then align edges or centers, or space three or more evenly.
+- **Textures:** fill an element with an image (tiled or stretched, with opacity and tint) or a built-in seamless pattern (noise, grain, stripes, dots, hatch). Textures are clipped to the shape and appear in the annotated PNG.
 - **Resize and move:** drag the handles on a selected element to resize it, drag its pin to resize from the top-left, or drag the body to move it. Agents can resize with `uispec element resize`.
 - **Structured descriptions:** name, purpose, behavior, states (checklist plus custom), content, constraints, notes, and a reference link.
 - **Flows:** order screens by drag and drop, add a "leads to" note, and draw arrows between elements.
 - **Project brief and design tokens:** purpose, audience, tone, colors, fonts, spacing, and radii apply to every screen.
 - **Spec bundles:** each export writes `spec.md`, annotated and original PNGs, and per-element JSON to a timestamped folder. `current/` always points at the latest.
-- **Agent control:** a `uispec` command drives the running app over a token-guarded localhost API, so an agent can add, edit, and export elements while you watch.
+- **Agent control:** a `uispec` command drives the running app over a token-guarded localhost API, so an agent can add, edit, align, texture, and export elements while you watch.
 - **Undo and redo** for every change, including the ones made by agents.
 - **Material Design UI:** dark and light themes, icon toolbars, and a tooltip on every control.
 

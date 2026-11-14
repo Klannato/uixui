@@ -70,6 +70,24 @@ def import_image(folder: Path, source: Path, index: int, name: str) -> str:
     return str(dest.relative_to(folder))
 
 
+def import_texture(folder: Path, source: Path, element_id: str) -> str:
+    """Copy a texture image into the project's textures/ folder and return its relative path."""
+    dest_dir = folder / "textures"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{element_id}-{new_suffix()}.png"
+    if source.suffix.lower() == ".png":
+        shutil.copyfile(source, dest)
+    else:
+        _convert_to_png(source, dest)
+    return str(dest.relative_to(folder))
+
+
+def new_suffix() -> str:
+    import uuid
+
+    return uuid.uuid4().hex[:6]
+
+
 def _convert_to_png(source: Path, dest: Path) -> None:
     from PySide6.QtGui import QImage
 

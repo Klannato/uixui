@@ -65,3 +65,31 @@ def test_second_export_keeps_history_and_moves_current(tmp_path, qapp, sample_pn
     assert first["path"] != second["path"]
     assert os.path.realpath(folder / "current") == os.path.realpath(second["path"])
     assert os.path.isdir(first["path"])
+
+
+def test_export_includes_grid_and_textures(tmp_path, qapp, sample_png):
+    from uispec import commands
+    from uispec.controller import Controller
+
+    ctrl = Controller()
+    commands.COMMANDS["project.new"](ctrl, {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    commands.COMMANDS["screen.add"](ctrl, {"path": str(sample_png), "name": "Login"})
+    commands.COMMANDS["element.add"](ctrl, {"kind": "rect", "box": [10, 10, 80, 40]})
+    commands.COMMANDS["element.add"](ctrl, {"kind": "ellipse", "box": [120, 10, 40, 40]})
+    commands.COMMANDS["element.texture"](ctrl, {"number": 1, "file": str(sample_png), "mode": "stretch",
+                                                "opacity": 0.6, "tint": "#3366ff"})
+    commands.COMMANDS["element.texture"](ctrl, {"number": 2, "pattern": "stripes", "color": "#ffcc00"})
+    commands.COMMANDS["project.set_grid"](ctrl, {"size": 12, "snap": True})
+
+    result = exporter.export(tmp_path / "shop", ctrl.project)
+    spec = (tmp_path / "shop" / "current" / "spec.md").read_text()
+    assert "- Grid: 12.0px (snapping on)" in spec
+    assert "image" in spec and "stretch" in spec and "60% opacity" in spec and "tinted #3366ff" in spec
+    assert "stripes pattern in #ffcc00" in spec
+
+    screen_dir = next((tmp_path / "shop" / "current" / "screens").iterdir())
+    assert any((screen_dir / "textures").iterdir())
+    data = json.loads((screen_dir / "elements.json").read_text())
+    assert data["elements"][0]["texture"]["file"].startswith("textures/")
+    assert data["elements"][1]["texture"]["pattern"] == "stripes"
+    assert result["warnings"] is not None

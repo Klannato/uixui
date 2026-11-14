@@ -3,6 +3,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import asdict, dataclass, field
 
+GRID_DEFAULT = {"size": 8, "snap": True}
+TEXTURE_MODES = ("tile", "stretch")
+PATTERNS = ("noise", "grain", "stripes", "dots", "hatch")
 STATES = ["default", "hover", "pressed", "focused", "disabled", "error", "empty", "loading"]
 SHAPE_KINDS = ("rect", "ellipse", "freehand")
 FIELD_NAMES = ("name", "purpose", "behavior", "states", "content", "constraints", "notes", "reference")
@@ -49,6 +52,7 @@ class Element:
     constraints: str = ""
     notes: str = ""
     reference: str = ""
+    texture: dict | None = None
 
     def bbox(self) -> tuple[float, float, float, float]:
         return bounds(self.points)
@@ -164,6 +168,7 @@ class Project:
     name: str
     brief: dict = field(default_factory=lambda: {k: "" for k in BRIEF_FIELDS})
     tokens: dict = field(default_factory=lambda: {k: "" for k in TOKEN_FIELDS})
+    grid: dict = field(default_factory=lambda: dict(GRID_DEFAULT))
     screens: list[Screen] = field(default_factory=list)
 
     def screen(self, screen_id: str) -> Screen:
@@ -177,6 +182,7 @@ class Project:
             "name": self.name,
             "brief": dict(self.brief),
             "tokens": dict(self.tokens),
+            "grid": dict(self.grid),
             "screens": [s.to_dict() for s in self.screens],
         }
 
@@ -186,5 +192,6 @@ class Project:
             name=d["name"],
             brief={k: d.get("brief", {}).get(k, "") for k in BRIEF_FIELDS},
             tokens={k: d.get("tokens", {}).get(k, "") for k in TOKEN_FIELDS},
+            grid={**GRID_DEFAULT, **d.get("grid", {})},
             screens=[Screen.from_dict(s) for s in d.get("screens", [])],
         )

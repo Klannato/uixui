@@ -109,6 +109,9 @@ def build_parser() -> argparse.ArgumentParser:
     pbrief.add_argument("--set", action="append", metavar="KEY=VALUE")
     ptokens = project.add_parser("tokens", help="set token fields: colors, fonts, spacing, radii")
     ptokens.add_argument("--set", action="append", metavar="KEY=VALUE")
+    pgrid = project.add_parser("grid", help="layout grid size and snapping")
+    pgrid.add_argument("--size", type=float)
+    pgrid.add_argument("--snap", choices=["on", "off"])
 
     screen = sub.add_parser("screen", help="screens").add_subparsers(dest="cmd", required=True)
     sadd = screen.add_parser("add", help="add a screenshot file")
@@ -145,6 +148,23 @@ def build_parser() -> argparse.ArgumentParser:
     eresize.add_argument("number", type=int)
     eresize.add_argument("--screen")
     eresize.add_argument("--box", required=True, help="x,y,w,h in image pixels")
+    ealign = element.add_parser("align", help="line up or distribute several elements")
+    ealign.add_argument("--screen")
+    ealign.add_argument("--numbers", required=True, help="comma-separated element numbers, e.g. 1,2,3")
+    ealign.add_argument("--mode", required=True,
+                        choices=["left", "hcenter", "right", "top", "vcenter", "bottom", "dist_h", "dist_v"])
+    etex = element.add_parser("texture", help="set, change, or remove an element's texture")
+    etex.add_argument("number", type=int)
+    etex.add_argument("--screen")
+    src = etex.add_mutually_exclusive_group()
+    src.add_argument("--file", type=Path, help="image to tile or stretch over the element")
+    src.add_argument("--pattern", choices=["noise", "grain", "stripes", "dots", "hatch"])
+    src.add_argument("--clear", action="store_true", help="remove the texture")
+    etex.add_argument("--color", help="pattern color, #rrggbb (patterns only)")
+    etex.add_argument("--mode", choices=["tile", "stretch"], help="image fit (images only)")
+    etex.add_argument("--scale", type=float, help="0.05 to 20; 1 is original size")
+    etex.add_argument("--opacity", type=float, help="0 to 1")
+    etex.add_argument("--tint", help="optional #rrggbb wash over the texture; pass '' to remove")
     edel = element.add_parser("delete")
     edel.add_argument("number", type=int)
     edel.add_argument("--screen")
@@ -218,6 +238,14 @@ def run(args: argparse.Namespace):
         if c == "tokens":
             ensure_app()
             return send("project.set_tokens", {"fields": _kv(args.set)})
+        if c == "grid":
+            ensure_app()
+            payload = {}
+            if args.size is not None:
+                payload["size"] = args.size
+            if args.snap is not None:
+                payload["snap"] = args.snap == "on"
+            return send("project.set_grid", payload)
 
     if g == "screen":
         ensure_app()
@@ -250,6 +278,22 @@ def run(args: argparse.Namespace):
             for key, value in _kv(args.set).items():
                 fields[key] = [s.strip() for s in value.split(",") if s.strip()] if key == "states" else value
             return send("element.edit", {"screen": args.screen, "number": args.number, "fields": fields})
+        if c == "align":
+            numbers = [int(n) for n in args.numbers.split(",") if n.strip()]
+            return send("element.align", {"screen": args.screen, "numbers": numbers, "mode": args.mode})
+        if c == "texture":
+            if args.clear:
+                return send("element.texture", {"screen": args.screen, "number": args.number, "clear": True})
+            payload = {"screen": args.screen, "number": args.number}
+            if args.file:
+                payload["file"] = str(args.file.expanduser())
+            if args.pattern:
+                payload["pattern"] = args.pattern
+            for key in ("color", "mode", "scale", "opacity", "tint"):
+                value = getattr(args, key)
+                if value is not None:
+                    payload[key] = value
+            return send("element.texture", payload)
         if c == "resize":
             return send("element.resize", {"screen": args.screen, "number": args.number, "box": _box(args.box)})
         if c == "delete":
@@ -286,6 +330,10 @@ def run(args: argparse.Namespace):
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--json" in argv:
+        argv.remove("--json")
+        argv.insert(0, "--json")
     args = parser.parse_args(argv)
     try:
         result = run(args)

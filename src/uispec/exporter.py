@@ -42,7 +42,21 @@ def _element_dict(e: Element) -> dict:
     d = {"number": e.number, "id": e.id, "kind": e.kind, "bbox": [x0, y0, x1, y1]}
     for name in FIELD_NAMES:
         d[name] = getattr(e, name)
+    d["texture"] = e.texture
     return d
+
+
+def texture_summary(texture: dict | None) -> str:
+    if not texture:
+        return "-"
+    opacity = f"{round(float(texture.get('opacity', 1.0)) * 100)}% opacity"
+    if texture["kind"] == "pattern":
+        what = (f"{texture['pattern']} pattern in {texture.get('color') or '#808080'} "
+                f"at {texture.get('scale', 1)}x")
+    else:
+        what = f"image {Path(texture['file']).name}, {texture.get('mode', 'tile')} at {texture.get('scale', 1)}x"
+    tint = f", tinted {texture['tint']}" if texture.get("tint") else ""
+    return f"{what}, {opacity}{tint}"
 
 
 def _element_markdown(e: Element) -> list[str]:
@@ -55,6 +69,7 @@ def _element_markdown(e: Element) -> list[str]:
     lines.append(f"- Constraints: {e.constraints or '-'}")
     lines.append(f"- Notes: {e.notes or '-'}")
     lines.append(f"- Reference: {e.reference or '-'}")
+    lines.append(f"- Texture: {texture_summary(e.texture)}")
     lines.append("")
     return lines
 
@@ -67,6 +82,9 @@ def spec_markdown(project: Project, screen_dirs: dict[str, str], stamp: str) -> 
     lines += ["", "## Design tokens", ""]
     for key in TOKEN_FIELDS:
         lines.append(f"- {TOKEN_LABELS[key]}: {project.tokens.get(key) or '-'}")
+    grid = project.grid
+    snap = "snapping on" if grid.get("snap", True) else "snapping off"
+    lines += ["", "## Layout grid", "", f"- Grid: {grid.get('size', 8)}px ({snap})", ""]
     lines += ["", "## Screen flow", ""]
     for i, s in enumerate(project.screens, 1):
         leads = f" → leads to: {s.leads_to}" if s.leads_to else ""
@@ -98,7 +116,7 @@ def spec_markdown(project: Project, screen_dirs: dict[str, str], stamp: str) -> 
     return "\n".join(lines)
 
 
-def render_screen(folder: Path, screen: Screen, out: Path, selected: int | None = None) -> Path:
+def render_screen(folder: Path, screen: Screen, out: Path, selected=()) -> Path:
     image = QImage(str(folder / screen.image))
     if image.isNull():
         raise ValueError(f"cannot read screen image: {screen.image}")
@@ -106,7 +124,7 @@ def render_screen(folder: Path, screen: Screen, out: Path, selected: int | None 
     painter = QPainter(painter_target)
     try:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        draw_screen_marks(painter, screen, selected)
+        draw_screen_marks(painter, screen, selected, folder)
     finally:
         painter.end()
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -132,15 +150,24 @@ def export(folder: Path, project: Project) -> dict:
         sdir.mkdir(parents=True)
         shutil.copyfile(folder / screen.image, sdir / "original.png")
         render_screen(folder, screen, sdir / "annotated.png")
+        elements = [_element_dict(e) for e in screen.elements]
+        for d, e in zip(elements, screen.elements):
+            if e.texture and e.texture["kind"] == "image":
+                d["texture"] = {**e.texture, "file": f"textures/{Path(e.texture['file']).name}"}
         data = {
             "screen": screen.name,
             "leads_to": screen.leads_to,
-            "elements": [_element_dict(e) for e in screen.elements],
+            "elements": elements,
             "arrows": [{"from": a.from_number, "to": a.to_number, "to_point": a.to_point, "label": a.label}
                        for a in screen.arrows],
             "labels": [{"text": t.text, "x": t.x, "y": t.y} for t in screen.labels],
         }
         (sdir / "elements.json").write_text(json.dumps(data, indent=2))
+        for e in screen.elements:
+            if e.texture and e.texture["kind"] == "image":
+                tdir = sdir / "textures"
+                tdir.mkdir(exist_ok=True)
+                shutil.copyfile(folder / e.texture["file"], tdir / Path(e.texture["file"]).name)
 
     (export_dir / "spec.md").write_text(spec_markdown(project, screen_dirs, stamp))
 

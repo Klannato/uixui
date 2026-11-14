@@ -9,7 +9,8 @@ import datetime as dt
 
 from . import capture, exporter, store
 from .controller import Controller
-from .model import BRIEF_FIELDS, FIELD_NAMES, TOKEN_FIELDS, Arrow, Screen, TextLabel
+from . import layout
+from .model import BRIEF_FIELDS, FIELD_NAMES, PATTERNS, TEXTURE_MODES, TOKEN_FIELDS, Arrow, Screen, TextLabel
 
 Reply = Callable[..., None]
 
@@ -127,6 +128,23 @@ def project_set_tokens(ctrl: Controller, args: dict):
         project.tokens.update(fields)
     ctrl.mutate(apply)
     return {"tokens": dict(ctrl.project.tokens)}
+
+
+@command("project.set_grid")
+def project_set_grid(ctrl: Controller, args: dict):
+    project = ctrl.require_project()
+    size = float(args.get("size", project.grid["size"]))
+    if not 1 <= size <= 512:
+        raise CommandError("grid size must be between 1 and 512 pixels")
+    snap = args.get("snap", project.grid.get("snap", True))
+    if isinstance(snap, str):
+        snap = snap.lower() in ("on", "true", "yes", "1")
+    grid = {"size": size, "snap": bool(snap)}
+
+    def apply(p):
+        p.grid = grid
+    ctrl.mutate(apply)
+    return {"grid": grid}
 
 
 def _check_fields(fields: dict, allowed) -> None:
@@ -320,6 +338,92 @@ def element_delete(ctrl: Controller, args: dict):
         project.screen(sid).delete_element(number)
     ctrl.mutate(apply)
     return {"deleted": number}
+
+
+@command("element.align")
+def element_align(ctrl: Controller, args: dict):
+    screen = resolve_screen(ctrl, args.get("screen"))
+    numbers = [int(n) for n in args.get("numbers", [])]
+    mode = args.get("mode", "")
+    missing = [n for n in numbers if screen.element(n) is None]
+    if missing:
+        raise CommandError(f"no element {missing[0]} on {screen.name}")
+    boxes = {n: screen.element(n).bbox() for n in numbers}
+    try:
+        deltas = layout.align_deltas(boxes, mode)
+    except ValueError as exc:
+        raise CommandError(str(exc)) from exc
+    sid = screen.id
+
+    def apply(project):
+        target = project.screen(sid)
+        for n, (dx, dy) in deltas.items():
+            e = target.element(n)
+            e.points = [[round(x + dx, 2), round(y + dy, 2)] for x, y in e.points]
+    ctrl.mutate(apply)
+    return {"mode": mode, "moved": {str(n): [round(dx, 2), round(dy, 2)] for n, (dx, dy) in deltas.items()}}
+
+
+@command("element.texture")
+def element_texture(ctrl: Controller, args: dict):
+    screen = resolve_screen(ctrl, args.get("screen"))
+    number = _number(args)
+    element = screen.element(number)
+    if element is None:
+        raise CommandError(f"no element {number} on {screen.name}")
+    sid = screen.id
+    if args.get("clear"):
+        def clear(project):
+            project.screen(sid).element(number).texture = None
+        ctrl.mutate(clear)
+        return {"element": number, "texture": None}
+
+    mode = args.get("mode")
+    if mode is not None and mode not in TEXTURE_MODES:
+        raise CommandError(f"mode must be one of {', '.join(TEXTURE_MODES)}")
+    opacity = args.get("opacity")
+    if opacity is not None and not 0 <= float(opacity) <= 1:
+        raise CommandError("opacity must be between 0 and 1")
+    scale = args.get("scale")
+    if scale is not None and not 0.05 <= float(scale) <= 20:
+        raise CommandError("scale must be between 0.05 and 20")
+    tint = args.get("tint")
+
+    current = dict(element.texture or {})
+    if args.get("file") and args.get("pattern"):
+        raise CommandError("give either a file or a pattern, not both")
+    if args.get("file"):
+        source = Path(args["file"]).expanduser()
+        if not source.exists():
+            raise CommandError(f"no such image: {source}")
+        rel = store.import_texture(ctrl.folder, source, element.id)
+        current = {"kind": "image", "file": rel, "mode": "tile", "scale": 1.0, "opacity": 1.0}
+    elif args.get("pattern"):
+        name = args["pattern"]
+        if name not in PATTERNS:
+            raise CommandError(f"pattern must be one of {', '.join(PATTERNS)}")
+        current = {"kind": "pattern", "pattern": name, "color": args.get("color") or "#808080",
+                   "scale": 1.0, "opacity": 1.0}
+    elif not current:
+        raise CommandError("give --file, --pattern, or --clear")
+
+    if mode is not None:
+        if current["kind"] == "pattern":
+            raise CommandError("mode only applies to image textures")
+        current["mode"] = mode
+    if opacity is not None:
+        current["opacity"] = float(opacity)
+    if scale is not None:
+        current["scale"] = float(scale)
+    if tint is not None:
+        current["tint"] = tint or None
+    if args.get("color") and current["kind"] == "pattern" and not args.get("pattern"):
+        current["color"] = args["color"]
+
+    def apply(project):
+        project.screen(sid).element(number).texture = current
+    ctrl.mutate(apply)
+    return {"element": number, "texture": current}
 
 
 @command("arrow.add")

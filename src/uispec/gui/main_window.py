@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
         self._build_actions()
         self.statusBar().showMessage("Ready. Hover any control for a short explanation.")
 
-        self.canvas.selectionChanged.connect(self.elements.select_number)
+        self.canvas.selectionChanged.connect(self.elements.select_numbers)
         self.elements.selected.connect(self.canvas.select)
         self.screens.selected.connect(self._select_screen)
         self.canvas.message.connect(self.show_message)
@@ -229,6 +229,39 @@ class MainWindow(QMainWindow):
         self.redo_action = self._action("Redo", "mdi6.redo", TIPS["redo"], self.redo, "Ctrl+Shift+Z")
         tools.addAction(self.undo_action)
         tools.addAction(self.redo_action)
+        tools.addSeparator()
+
+        self.grid_action = self._toggle("Grid", "mdi6.grid", TIPS["grid_toggle"], "G", self.toggle_grid)
+        self.snap_action = self._toggle("Snap", "mdi6.magnet", TIPS["snap_toggle"], "S", self.toggle_snap)
+        tools.addAction(self.grid_action)
+        tools.addAction(self.snap_action)
+
+    def _toggle(self, text: str, icon: str, tip: str, shortcut: str, slot) -> QAction:
+        act = QAction(f"{text} ({shortcut})", self)
+        act.setCheckable(True)
+        act.setShortcut(QKeySequence(shortcut))
+        act.setToolTip(tip)
+        act.setStatusTip(tip.replace("<br>", " ").replace("<b>", "").replace("</b>", ""))
+        act.setIcon(theme.icon(icon))
+        act.triggered.connect(slot)
+        self._themed.append((act, icon, "on_variant"))
+        self.addAction(act)
+        return act
+
+    def toggle_grid(self) -> None:
+        if self.ctrl.is_open:
+            self.canvas.toggle_grid()
+            self.grid_action.setChecked(self.canvas.grid_visible)
+
+    def toggle_snap(self) -> None:
+        if not self.ctrl.is_open:
+            return
+        on = not self.ctrl.project.grid.get("snap", True)
+        try:
+            COMMANDS["project.set_grid"](self.ctrl, {"snap": on})
+            self.show_message(f"Snap to grid {'on' if on else 'off'}")
+        except CommandError as exc:
+            self.show_message(str(exc))
 
     def _build_recent_button(self) -> QToolButton:
         self.recent_menu = QMenu(self)
@@ -282,7 +315,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{self.ctrl.project.name} — uispec")
         self.screens.refresh()
         self.canvas.refresh()
-        self.elements.refresh(self.canvas.selected)
+        self.elements.refresh(self.canvas.selection)
+        self.grid_action.setChecked(self.canvas.grid_visible)
+        self.snap_action.setChecked(bool(self.ctrl.project.grid.get("snap", True)))
         self.project.refresh()
         self.undo_action.setEnabled(self.ctrl.can_undo)
         self.redo_action.setEnabled(self.ctrl.can_redo)

@@ -90,3 +90,82 @@ def test_resize_command_rejects_tiny_box(tmp_path, qapp, sample_png):
     else:
         raise AssertionError("expected an error")
     assert run(ctrl, "element.list")["elements"][0]["points"] == [[10, 10], [50, 30]]
+
+
+def _setup_with_three(tmp_path, sample_png):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Login"})
+    run(ctrl, "element.add", {"kind": "rect", "box": [10, 10, 40, 20]})
+    run(ctrl, "element.add", {"kind": "rect", "box": [60, 50, 40, 20]})
+    run(ctrl, "element.add", {"kind": "rect", "box": [120, 30, 30, 20]})
+    return ctrl
+
+
+def test_align_command_moves_elements_and_undoes(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    out = run(ctrl, "element.align", {"numbers": [1, 2], "mode": "top"})
+    assert set(out["moved"]) == {"1", "2"}
+    tops = {min(p[1] for p in e["points"]) for e in run(ctrl, "element.list")["elements"][:2]}
+    assert tops == {10}
+    run(ctrl, "undo")
+    assert min(p[1] for p in run(ctrl, "element.list")["elements"][1]["points"]) == 50
+
+
+def test_align_command_rejects_single_element(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    try:
+        run(ctrl, "element.align", {"numbers": [1], "mode": "left"})
+    except CommandError as exc:
+        assert "at least two" in str(exc)
+    else:
+        raise AssertionError("expected an error")
+
+
+def test_grid_command_validates_and_saves(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    assert run(ctrl, "project.set_grid", {"size": 16, "snap": "off"})["grid"] == {"size": 16.0, "snap": False}
+    assert ctrl.project.grid == {"size": 16.0, "snap": False}
+    try:
+        run(ctrl, "project.set_grid", {"size": 0})
+    except CommandError:
+        pass
+    else:
+        raise AssertionError("expected an error")
+
+
+def test_texture_pattern_then_adjust_then_clear(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    out = run(ctrl, "element.texture", {"number": 1, "pattern": "dots", "color": "#ffcc00", "opacity": 0.5})
+    assert out["texture"] == {"kind": "pattern", "pattern": "dots", "color": "#ffcc00",
+                              "scale": 1.0, "opacity": 0.5}
+    run(ctrl, "element.texture", {"number": 1, "scale": 2})
+    assert run(ctrl, "element.list")["elements"][0]["texture"]["scale"] == 2.0
+    run(ctrl, "element.texture", {"number": 1, "clear": True})
+    assert run(ctrl, "element.list")["elements"][0]["texture"] is None
+
+
+def test_texture_image_is_copied_into_project(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    out = run(ctrl, "element.texture", {"number": 2, "file": str(sample_png), "mode": "stretch"})
+    rel = out["texture"]["file"]
+    assert rel.startswith("textures/")
+    assert (tmp_path / "shop" / rel).exists()
+    assert out["texture"]["mode"] == "stretch"
+
+
+def test_texture_validation(tmp_path, qapp, sample_png):
+    ctrl = _setup_with_three(tmp_path, sample_png)
+    cases = [
+        {"number": 1, "pattern": "waves"},
+        {"number": 1, "pattern": "dots", "opacity": 2},
+        {"number": 1, "pattern": "dots", "scale": 0},
+        {"number": 1, "file": str(tmp_path / "missing.png")},
+        {"number": 1},
+    ]
+    for args in cases:
+        try:
+            run(ctrl, "element.texture", args)
+        except CommandError:
+            continue
+        raise AssertionError(f"expected an error for {args}")

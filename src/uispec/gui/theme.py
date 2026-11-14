@@ -314,6 +314,37 @@ QHeaderView::section {{
     padding: 6px 8px;
     font-weight: 600;
 }}
+QSpinBox, QDoubleSpinBox {{
+    background: {c['surface_high']};
+    color: {c['on_surface']};
+    border: 1px solid {c['outline_variant']};
+    border-radius: 10px;
+    padding: 5px 8px;
+    min-height: 22px;
+}}
+QSpinBox:focus, QDoubleSpinBox:focus {{
+    border: 2px solid {c['primary']};
+}}
+QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+    width: 0;
+    border: none;
+}}
+QSlider::groove:horizontal {{
+    height: 4px;
+    background: {c['outline_variant']};
+    border-radius: 2px;
+}}
+QSlider::sub-page:horizontal {{
+    background: {c['primary']};
+    border-radius: 2px;
+}}
+QSlider::handle:horizontal {{
+    background: {c['primary']};
+    width: 16px;
+    height: 16px;
+    margin: -6px 0;
+    border-radius: 8px;
+}}
 QComboBox {{
     background: {c['surface_high']};
     color: {c['on_surface']};

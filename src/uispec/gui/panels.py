@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from pathlib import Path
+
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QFormLayout, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget,
+    QAbstractItemView, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGridLayout, QHBoxLayout,
+    QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QPushButton, QSlider, QSpinBox,
+    QToolButton, QVBoxLayout, QWidget,
 )
 
 from ..commands import COMMANDS, CommandError
 from ..controller import Controller
-from ..model import BRIEF_FIELDS, STATES, TOKEN_FIELDS
+from ..model import BRIEF_FIELDS, PATTERNS, STATES, TOKEN_FIELDS
+from . import theme
 from .help import HINTS, TIPS
 
 ID_ROLE = Qt.ItemDataRole.UserRole
@@ -107,15 +111,17 @@ class ScreenPanel(QWidget):
 
 class ElementPanel(QWidget):
     message = Signal(str)
-    selected = Signal(object)
+    selected = Signal(list)
 
     def __init__(self, ctrl: Controller, parent: QWidget | None = None):
         super().__init__(parent)
         self.ctrl = ctrl
         self._number: int | None = None
+        self._texture_file: str | None = None
         self.list = QListWidget()
+        self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.list.setToolTip(TIPS["element_list"])
-        self.list.currentRowChanged.connect(self._on_user_row)
+        self.list.itemSelectionChanged.connect(self._on_user_selection)
         self.empty_hint = QLabel(HINTS["elements"])
         self.empty_hint.setObjectName("hint")
         self.empty_hint.setWordWrap(True)
@@ -177,17 +183,130 @@ class ElementPanel(QWidget):
         buttons.addWidget(self.save_btn)
         buttons.addWidget(self.delete_btn)
 
+        self.align_bar = self._build_align_bar()
+        self.texture_box = self._build_texture_section()
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(section("Elements"))
+        layout.addWidget(section("Elements", HINTS["multi_select"]))
         layout.addWidget(self.list)
         layout.addWidget(self.empty_hint)
+        layout.addWidget(self.align_bar)
         layout.addSpacing(8)
         layout.addWidget(self.form_hint)
         layout.addLayout(self.form)
         layout.addLayout(buttons)
+        layout.addSpacing(8)
+        layout.addWidget(self.texture_box)
         layout.addStretch(1)
         self._set_form_enabled(False)
+
+    def _build_align_bar(self) -> QWidget:
+        bar = QWidget()
+        grid = QGridLayout(bar)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(4)
+        self.align_buttons = {}
+        items = [
+            ("left", "mdi6.align-horizontal-left", 0, 0), ("hcenter", "mdi6.align-horizontal-center", 0, 1),
+            ("right", "mdi6.align-horizontal-right", 0, 2), ("dist_h", "mdi6.distribute-horizontal-center", 0, 3),
+            ("top", "mdi6.align-vertical-top", 1, 0), ("vcenter", "mdi6.align-vertical-center", 1, 1),
+            ("bottom", "mdi6.align-vertical-bottom", 1, 2), ("dist_v", "mdi6.distribute-vertical-center", 1, 3),
+        ]
+        for mode, icon, row, col in items:
+            btn = QToolButton()
+            btn.setIconSize(QSize(20, 20))
+            btn.setIcon(theme.icon(icon))
+            btn.setToolTip(TIPS[f"align_{mode}"])
+            btn.setEnabled(False)
+            btn.clicked.connect(lambda _c=False, m=mode: self.align(m))
+            self.align_buttons[mode] = (btn, icon)
+            grid.addWidget(btn, row, col)
+        return bar
+
+    def _build_texture_section(self) -> QWidget:
+        box = QWidget()
+        box.setObjectName("card")
+        layout = QFormLayout(box)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setVerticalSpacing(8)
+        self.tex_source = QComboBox()
+        self.tex_source.addItems(["None", "Image", "Pattern"])
+        self.tex_source.setToolTip(TIPS["texture_source"])
+        self.tex_source.currentIndexChanged.connect(self._texture_source_changed)
+        self.tex_pick = QPushButton("Choose image…")
+        self.tex_pick.setToolTip(TIPS["texture_pick"])
+        self.tex_pick.clicked.connect(self._pick_texture_file)
+        self.tex_file_label = QLabel("")
+        self.tex_file_label.setObjectName("hint")
+        self.tex_pattern = QComboBox()
+        self.tex_pattern.addItems(list(PATTERNS))
+        self.tex_pattern.setToolTip(TIPS["texture_pattern"])
+        self.tex_color = QLineEdit("#808080")
+        self.tex_color.setToolTip(TIPS["texture_color"])
+        self.tex_mode = QComboBox()
+        self.tex_mode.addItems(["tile", "stretch"])
+        self.tex_mode.setToolTip(TIPS["texture_mode"])
+        self.tex_scale = QDoubleSpinBox()
+        self.tex_scale.setRange(0.05, 20)
+        self.tex_scale.setSingleStep(0.25)
+        self.tex_scale.setValue(1.0)
+        self.tex_scale.setToolTip(TIPS["texture_scale"])
+        self.tex_opacity = QSlider(Qt.Orientation.Horizontal)
+        self.tex_opacity.setRange(0, 100)
+        self.tex_opacity.setValue(100)
+        self.tex_opacity.setToolTip(TIPS["texture_opacity"])
+        self.tex_tint = QLineEdit()
+        self.tex_tint.setPlaceholderText("Optional, e.g. #3366ff")
+        self.tex_tint.setToolTip(TIPS["texture_tint"])
+        self.tex_apply = QPushButton("Apply texture")
+        self.tex_apply.setProperty("variant", "filled")
+        self.tex_apply.setToolTip(TIPS["texture_apply"])
+        self.tex_apply.clicked.connect(self.apply_texture)
+        self.tex_clear = QPushButton("Remove")
+        self.tex_clear.setToolTip(TIPS["texture_clear"])
+        self.tex_clear.clicked.connect(self.clear_texture)
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.tex_apply)
+        buttons.addWidget(self.tex_clear)
+
+        title = QLabel("Texture")
+        title.setObjectName("sectionTitle")
+        self.tex_hint = QLabel(HINTS["texture"])
+        self.tex_hint.setObjectName("hint")
+        self.tex_hint.setWordWrap(True)
+        layout.addRow(title)
+        layout.addRow(self.tex_hint)
+        layout.addRow("Source", self.tex_source)
+        layout.addRow("", self.tex_pick)
+        layout.addRow("", self.tex_file_label)
+        layout.addRow("Pattern", self.tex_pattern)
+        layout.addRow("Color", self.tex_color)
+        layout.addRow("Image fit", self.tex_mode)
+        layout.addRow("Scale", self.tex_scale)
+        layout.addRow("Opacity", self.tex_opacity)
+        layout.addRow("Tint", self.tex_tint)
+        layout.addRow(buttons)
+        self._texture_source_changed()
+        return box
+
+    def _texture_source_changed(self) -> None:
+        source = self.tex_source.currentText()
+        self.tex_pick.setVisible(source == "Image")
+        self.tex_file_label.setVisible(source == "Image")
+        self.tex_pattern.setVisible(source == "Pattern")
+        self.tex_color.setVisible(source == "Pattern")
+        self.tex_mode.setVisible(source == "Image")
+        self.tex_tint.setEnabled(source != "None")
+
+    def _pick_texture_file(self) -> None:
+        from PySide6.QtWidgets import QFileDialog
+
+        path, _ = QFileDialog.getOpenFileName(self, "Choose texture image", "",
+                                              "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif)")
+        if path:
+            self._texture_file = path
+            self.tex_file_label.setText(Path(path).name)
 
     def _set_form_enabled(self, enabled: bool) -> None:
         for w in (self.name, self.purpose, self.behavior, self.custom_states, self.content,
@@ -195,8 +314,16 @@ class ElementPanel(QWidget):
                   *self.state_boxes.values()):
             w.setEnabled(enabled)
         self.form_hint.setVisible(not enabled)
+        self.texture_box.setEnabled(enabled)
 
-    def refresh(self, number: int | None = None) -> None:
+    def _selected_numbers(self) -> list[int]:
+        screen = self.ctrl.current_screen()
+        if screen is None:
+            return []
+        rows = sorted({self.list.row(i) for i in self.list.selectedItems()})
+        return [screen.elements[r].number for r in rows if r < len(screen.elements)]
+
+    def refresh(self, numbers=()) -> None:
         screen = self.ctrl.current_screen()
         self.list.blockSignals(True)
         self.list.clear()
@@ -205,31 +332,45 @@ class ElementPanel(QWidget):
                 self.list.addItem(f"{e.number}. {e.name or '(unnamed)'}")
         self.list.blockSignals(False)
         self.empty_hint.setVisible(screen is None or not screen.elements)
-        self.select_number(number)
+        self.select_numbers(list(numbers))
 
-    def select_number(self, number: int | None) -> None:
+    def select_numbers(self, numbers: list[int]) -> None:
         screen = self.ctrl.current_screen()
-        row = -1
-        if screen is not None and number is not None:
-            row = next((i for i, e in enumerate(screen.elements) if e.number == number), -1)
+        rows = []
+        if screen is not None:
+            rows = [i for i, e in enumerate(screen.elements) if e.number in numbers]
         self.list.blockSignals(True)
-        self.list.setCurrentRow(row)
+        self.list.clearSelection()
+        for row in rows:
+            self.list.item(row).setSelected(True)
+        if rows:
+            self.list.setCurrentRow(rows[-1])
         self.list.blockSignals(False)
-        self._on_row(row)
+        self._update_for_selection(numbers)
 
-    def _on_user_row(self, row: int) -> None:
-        self._on_row(row)
-        self.selected.emit(self._number)
+    def _on_user_selection(self) -> None:
+        numbers = self._selected_numbers()
+        self._update_for_selection(numbers)
+        self.selected.emit(numbers)
 
-    def _on_row(self, row: int) -> None:
+    def _update_for_selection(self, numbers: list[int]) -> None:
         screen = self.ctrl.current_screen()
-        if screen is None or row < 0 or row >= len(screen.elements):
+        count = len(numbers)
+        for mode, (btn, _icon) in self.align_buttons.items():
+            needed = 3 if mode.startswith("dist_") else 2
+            btn.setEnabled(count >= needed)
+        if count == 1 and screen is not None:
+            element = screen.element(numbers[0])
+            self._load(element)
+        else:
             self._number = None
             self._clear_form()
             self._set_form_enabled(False)
-            return
-        e = screen.elements[row]
+            self.form_hint.setText(HINTS["element_form"] if count == 0 else f"{count} elements selected.")
+
+    def _load(self, e) -> None:
         self._number = e.number
+        self.form_hint.setText(HINTS["element_form"])
         self.name.setText(e.name)
         self.purpose.setText(e.purpose)
         self.behavior.setPlainText(e.behavior)
@@ -240,7 +381,29 @@ class ElementPanel(QWidget):
         self.constraints.setPlainText(e.constraints)
         self.notes.setPlainText(e.notes)
         self.reference.setText(e.reference)
+        self._load_texture(e.texture)
         self._set_form_enabled(True)
+
+    def _load_texture(self, texture) -> None:
+        self._texture_file = None
+        self.tex_file_label.setText("")
+        if not texture:
+            self.tex_source.setCurrentIndex(0)
+            self.tex_scale.setValue(1.0)
+            self.tex_opacity.setValue(100)
+            self.tex_tint.setText("")
+        elif texture["kind"] == "pattern":
+            self.tex_source.setCurrentIndex(2)
+            self.tex_pattern.setCurrentText(texture["pattern"])
+            self.tex_color.setText(texture.get("color") or "#808080")
+        else:
+            self.tex_source.setCurrentIndex(1)
+            self.tex_mode.setCurrentText(texture.get("mode", "tile"))
+            self.tex_file_label.setText(Path(texture["file"]).name)
+        if texture:
+            self.tex_scale.setValue(float(texture.get("scale", 1.0)))
+            self.tex_opacity.setValue(round(float(texture.get("opacity", 1.0)) * 100))
+            self.tex_tint.setText(texture.get("tint") or "")
 
     def _clear_form(self) -> None:
         for w in (self.name, self.purpose, self.custom_states, self.reference):
@@ -249,6 +412,7 @@ class ElementPanel(QWidget):
             w.clear()
         for box in self.state_boxes.values():
             box.setChecked(False)
+        self._load_texture(None)
 
     def _states(self) -> list[str]:
         states = [s for s, box in self.state_boxes.items() if box.isChecked()]
@@ -276,13 +440,67 @@ class ElementPanel(QWidget):
             self.message.emit(str(exc))
 
     def delete(self) -> None:
-        if self._number is None:
+        numbers = self._selected_numbers()
+        if not numbers:
             return
         screen = self.ctrl.current_screen()
         try:
-            run(self.ctrl, "element.delete", {"screen": screen.id, "number": self._number})
+            for number in sorted(numbers, reverse=True):
+                run(self.ctrl, "element.delete", {"screen": screen.id, "number": number})
         except CommandError as exc:
             self.message.emit(str(exc))
+
+    def align(self, mode: str) -> None:
+        screen = self.ctrl.current_screen()
+        numbers = self._selected_numbers()
+        if screen is None or not numbers:
+            return
+        try:
+            run(self.ctrl, "element.align", {"screen": screen.id, "numbers": numbers, "mode": mode})
+        except CommandError as exc:
+            self.message.emit(str(exc))
+
+    def apply_texture(self) -> None:
+        if self._number is None:
+            return
+        screen = self.ctrl.current_screen()
+        source = self.tex_source.currentText()
+        args = {
+            "screen": screen.id,
+            "number": self._number,
+            "scale": self.tex_scale.value(),
+            "opacity": self.tex_opacity.value() / 100,
+            "tint": self.tex_tint.text().strip(),
+        }
+        if source == "None":
+            args["clear"] = True
+        elif source == "Image":
+            if self._texture_file:
+                args["file"] = self._texture_file
+            elif self._current_texture_is_image():
+                args["mode"] = self.tex_mode.currentText()
+            else:
+                self.message.emit("Choose an image file first")
+                return
+            args["mode"] = self.tex_mode.currentText()
+        else:
+            args["pattern"] = self.tex_pattern.currentText()
+            args["color"] = self.tex_color.text().strip() or "#808080"
+        try:
+            run(self.ctrl, "element.texture", args)
+            self._texture_file = None
+            self.message.emit("Texture applied" if source != "None" else "Texture removed")
+        except CommandError as exc:
+            self.message.emit(str(exc))
+
+    def _current_texture_is_image(self) -> bool:
+        screen = self.ctrl.current_screen()
+        element = screen.element(self._number) if screen and self._number is not None else None
+        return bool(element and element.texture and element.texture["kind"] == "image")
+
+    def clear_texture(self) -> None:
+        self.tex_source.setCurrentIndex(0)
+        self.apply_texture()
 
 
 class ProjectPanel(QWidget):
@@ -305,6 +523,13 @@ class ProjectPanel(QWidget):
         self.brief["audience"].setPlaceholderText("Who uses it")
         self.brief["tone"].setPlaceholderText("calm, plain, professional")
 
+        self.grid_size = QSpinBox()
+        self.grid_size.setRange(1, 512)
+        self.grid_size.setSuffix(" px")
+        self.grid_size.setToolTip(TIPS["grid_size"])
+        self.grid_snap = QCheckBox("Snap elements to the grid")
+        self.grid_snap.setToolTip(TIPS["grid_snap"])
+
         form = QFormLayout()
         form.setVerticalSpacing(10)
         for key, widget in self.brief.items():
@@ -315,11 +540,24 @@ class ProjectPanel(QWidget):
         self.save_btn.setProperty("variant", "filled")
         self.save_btn.setToolTip(TIPS["save_brief"])
         self.save_btn.clicked.connect(self.save)
+
+        grid_form = QFormLayout()
+        grid_form.setVerticalSpacing(10)
+        grid_form.addRow("Grid size", self.grid_size)
+        grid_form.addRow("", self.grid_snap)
+        self.grid_save = QPushButton("Save grid")
+        self.grid_save.setToolTip(TIPS["save_grid"])
+        self.grid_save.clicked.connect(self.save_grid)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(section("Project brief", HINTS["project"]))
         layout.addLayout(form)
         layout.addWidget(self.save_btn, 0, Qt.AlignmentFlag.AlignRight)
+        layout.addSpacing(12)
+        layout.addWidget(section("Layout grid", HINTS["grid"]))
+        layout.addLayout(grid_form)
+        layout.addWidget(self.grid_save, 0, Qt.AlignmentFlag.AlignRight)
         layout.addStretch(1)
 
     def refresh(self) -> None:
@@ -328,9 +566,20 @@ class ProjectPanel(QWidget):
             widget.setText(project.brief.get(key, "") if project else "")
         for key, widget in self.tokens.items():
             widget.setPlainText(project.tokens.get(key, "") if project else "")
+        grid = project.grid if project else {"size": 8, "snap": True}
+        self.grid_size.setValue(int(grid.get("size", 8)))
+        self.grid_snap.setChecked(bool(grid.get("snap", True)))
         enabled = project is not None
-        for w in (*self.brief.values(), *self.tokens.values(), self.save_btn):
+        for w in (*self.brief.values(), *self.tokens.values(), self.save_btn,
+                  self.grid_size, self.grid_snap, self.grid_save):
             w.setEnabled(enabled)
+
+    def save_grid(self) -> None:
+        try:
+            run(self.ctrl, "project.set_grid", {"size": self.grid_size.value(), "snap": self.grid_snap.isChecked()})
+            self.message.emit("Grid saved")
+        except CommandError as exc:
+            self.message.emit(str(exc))
 
     def save(self) -> None:
         try:
