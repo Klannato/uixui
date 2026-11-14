@@ -29,6 +29,7 @@ BAND_THRESHOLD = 3
 class Canvas(QWidget):
     selectionChanged = Signal(list)
     message = Signal(str)
+    interacted = Signal()
 
     def __init__(self, ctrl: Controller, parent: QWidget | None = None):
         super().__init__(parent)
@@ -267,6 +268,7 @@ class Canvas(QWidget):
         if event.button() != Qt.MouseButton.LeftButton or self._image is None:
             return
         self.setFocus()
+        self.interacted.emit()
         x, y = self.to_image(event.position())
         shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
         screen = self.screen()

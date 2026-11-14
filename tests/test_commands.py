@@ -169,3 +169,32 @@ def test_texture_validation(tmp_path, qapp, sample_png):
         except CommandError:
             continue
         raise AssertionError(f"expected an error for {args}")
+
+
+def test_screen_remove_deletes_screen_and_undoes(tmp_path, qapp, sample_png):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Login"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Dashboard"})
+    run(ctrl, "element.add", {"kind": "rect", "box": [1, 1, 10, 10]})
+    assert ctrl.current_screen().name == "Dashboard"
+
+    sids = [s["id"] for s in run(ctrl, "screen.list")["screens"]]
+    run(ctrl, "screen.remove", {"screen": sids[1]})
+
+    names = [s["name"] for s in run(ctrl, "screen.list")["screens"]]
+    assert names == ["Login"]
+    assert ctrl.current_screen().name == "Login"
+    run(ctrl, "undo")
+    assert [s["name"] for s in run(ctrl, "screen.list")["screens"]] == ["Login", "Dashboard"]
+
+
+def test_element_edit_persists_across_screen_switch(tmp_path, qapp, sample_png):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "shop"), "name": "Shop"})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Login"})
+    run(ctrl, "element.add", {"kind": "rect", "box": [1, 1, 10, 10]})
+    run(ctrl, "element.edit", {"number": 1, "fields": {"name": "Submit", "purpose": "Log in"}})
+    run(ctrl, "screen.add", {"path": str(sample_png), "name": "Dashboard"})
+    run(ctrl, "screen.select", {"screen": "Login"})
+    assert run(ctrl, "element.list")["elements"][0]["name"] == "Submit"

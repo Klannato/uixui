@@ -15,6 +15,10 @@ TIPS = {
     "capture": "<b>Capture region</b><br>Pick a part of your screen. Your desktop shows the selector, "
                "and the capture becomes a new screen.",
     "screens_list": "<b>Screens</b><br>The screens in flow order. Drag a screen to reorder it.",
+    "delete_screen": "<b>Delete screen</b><br>Remove the selected screen and its elements. "
+                     "Press Delete while the list has focus. You can undo with Ctrl+Z.",
+    "autosave": "Edits save as soon as you click away, so nothing is lost. The Save button is there "
+                "if you prefer to save right away.",
     "leads_to": "Where this screen goes next, e.g. <i>Dashboard after login</i>. Included in the spec.",
     # tools
     "tool_select": "<b>Select</b> (V)<br>Click an element to select it and drag it to move it. "

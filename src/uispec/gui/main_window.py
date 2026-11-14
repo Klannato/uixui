@@ -104,12 +104,12 @@ class MainWindow(QMainWindow):
         frame_layout.addWidget(self.canvas)
 
         left = card(self.screens)
-        right_tabs = QTabWidget()
-        right_tabs.setDocumentMode(True)
-        right_tabs.addTab(self._scroll_page(self.elements), "Element")
-        right_tabs.addTab(self._scroll_page(self.project), "Project")
-        right_tabs.setToolTip("Element: describe the selected element.\nProject: brief and design tokens.")
-        right = card(right_tabs)
+        self.right_tabs = QTabWidget()
+        self.right_tabs.setDocumentMode(True)
+        self.right_tabs.addTab(self._scroll_page(self.elements), "Element")
+        self.right_tabs.addTab(self._scroll_page(self.project), "Project")
+        self.right_tabs.setToolTip("Element: describe the selected element.\nProject: brief and design tokens.")
+        right = card(self.right_tabs)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
@@ -136,6 +136,8 @@ class MainWindow(QMainWindow):
         self.elements.selected.connect(self.canvas.select)
         self.screens.selected.connect(self._select_screen)
         self.canvas.message.connect(self.show_message)
+        self.canvas.interacted.connect(self._flush_editors)
+        self.right_tabs.currentChanged.connect(lambda _index: self._flush_editors())
         self.elements.message.connect(self.show_message)
         self.screens.message.connect(self.show_message)
         self.project.message.connect(self.show_message)
@@ -325,6 +327,15 @@ class MainWindow(QMainWindow):
     def show_message(self, text: str) -> None:
         self.statusBar().showMessage(text, 8000)
 
+    def _flush_editors(self) -> None:
+        """Save any pending edits in the side panels. Called when focus or selection moves away."""
+        self.elements.flush()
+        self.project.flush()
+
+    def closeEvent(self, event):
+        self._flush_editors()
+        super().closeEvent(event)
+
     # ---- project and screens ---------------------------------------------------
 
     def new_project(self) -> None:
@@ -392,6 +403,7 @@ class MainWindow(QMainWindow):
     def export(self) -> None:
         if not self.ctrl.is_open:
             return
+        self._flush_editors()
         result = COMMANDS["export"](self.ctrl, {})
         self.show_message(f"Exported to {result['path']}")
         if result["warnings"]:
