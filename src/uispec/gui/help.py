@@ -4,6 +4,7 @@ TIPS = {
     # project actions
     "new_project": "<b>New project</b><br>Create a project folder under ~/ui-specs.",
     "open_project": "<b>Open project</b><br>Open an existing project folder.",
+    "recent": "<b>Recent projects</b><br>Open a project you used lately. The list is kept per user.",
     "export": "<b>Export spec</b><br>Write a timestamped bundle and point <code>current/</code> at it. "
               "Agents read <code>current/spec.md</code>.",
     "copy_prompt": "<b>Copy agent prompt</b><br>Copy a ready-made instruction that points a coding agent "

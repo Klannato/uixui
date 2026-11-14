@@ -289,7 +289,70 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
     background: none;
 }}
-QMessageBox, QInputDialog, QFileDialog {{
+QMessageBox, QInputDialog, QFileDialog, QDialog {{
     background: {c['surface']};
+    color: {c['on_surface']};
+}}
+QDialog QLabel, QFileDialog QLabel {{
+    color: {c['on_surface']};
+}}
+QAbstractItemView, QTreeView, QListView, QTableView {{
+    background: {c['surface_high']};
+    color: {c['on_surface']};
+    alternate-background-color: {c['surface']};
+    selection-background-color: {c['primary_container']};
+    selection-color: {c['on_primary_container']};
+    border: 1px solid {c['outline_variant']};
+    border-radius: 8px;
+    outline: none;
+}}
+QHeaderView::section {{
+    background: {c['surface']};
+    color: {c['on_variant']};
+    border: none;
+    border-bottom: 1px solid {c['outline_variant']};
+    padding: 6px 8px;
+    font-weight: 600;
+}}
+QComboBox {{
+    background: {c['surface_high']};
+    color: {c['on_surface']};
+    border: 1px solid {c['outline_variant']};
+    border-radius: 10px;
+    padding: 5px 10px;
+    min-height: 22px;
+}}
+QComboBox:focus {{
+    border: 2px solid {c['primary']};
+}}
+QComboBox QAbstractItemView {{
+    padding: 4px;
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 24px;
+}}
+QMenu {{
+    background: {c['surface_high']};
+    color: {c['on_surface']};
+    border: 1px solid {c['outline_variant']};
+    border-radius: 10px;
+    padding: 6px;
+}}
+QMenu::item {{
+    padding: 7px 18px;
+    border-radius: 8px;
+}}
+QMenu::item:selected {{
+    background: {c['primary_container']};
+    color: {c['on_primary_container']};
+}}
+QMenu::item:disabled {{
+    color: {c['outline']};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {c['outline_variant']};
+    margin: 6px 8px;
 }}
 """

@@ -9,8 +9,8 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QListWidget, QListWidgetItem,
-    QMainWindow, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStackedWidget,
-    QTabWidget, QToolBar, QVBoxLayout, QWidget,
+    QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSplitter, QStackedWidget,
+    QTabWidget, QToolBar, QToolButton, QVBoxLayout, QWidget,
 )
 
 from .. import store
@@ -183,6 +183,7 @@ class MainWindow(QMainWindow):
 
         top.addAction(self._action("New project", "mdi6.plus", TIPS["new_project"], self.new_project))
         top.addAction(self._action("Open", "mdi6.folder-open-outline", TIPS["open_project"], self.open_folder))
+        top.addWidget(self._build_recent_button())
         top.addSeparator()
         top.addAction(self._action("Paste", "mdi6.content-paste", TIPS["paste"], self.paste_image, "Ctrl+V"))
         top.addAction(self._action("Add image", "mdi6.image-plus", TIPS["add_image"], self.add_image_file))
@@ -229,6 +230,34 @@ class MainWindow(QMainWindow):
         tools.addAction(self.undo_action)
         tools.addAction(self.redo_action)
 
+    def _build_recent_button(self) -> QToolButton:
+        self.recent_menu = QMenu(self)
+        self.recent_menu.aboutToShow.connect(self._fill_recent_menu)
+        self.recent_button = QToolButton()
+        self.recent_button.setText("Recent")
+        self.recent_button.setToolTip(TIPS["recent"])
+        self.recent_button.setStatusTip("Open a recently used project")
+        self.recent_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.recent_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.recent_button.setMenu(self.recent_menu)
+        self.recent_button.setIcon(theme.icon("mdi6.history"))
+        return self.recent_button
+
+    def _fill_recent_menu(self) -> None:
+        self.recent_menu.clear()
+        paths = store.list_recent()
+        if not paths:
+            empty = self.recent_menu.addAction("No recent projects")
+            empty.setEnabled(False)
+            return
+        home = str(Path.home())
+        for path in paths:
+            folder = Path(path)
+            shown = str(folder.parent).replace(home, "~", 1)
+            act = self.recent_menu.addAction(f"{folder.name}    {shown}")
+            act.setToolTip(path)
+            act.triggered.connect(lambda _checked=False, p=folder: self.open_path(p))
+
     def toggle_theme(self) -> None:
         theme.toggle()
         QApplication.instance().setStyleSheet(theme.stylesheet())
@@ -238,6 +267,7 @@ class MainWindow(QMainWindow):
     def _restyle(self) -> None:
         for act, icon, color_key in self._themed:
             act.setIcon(theme.icon(icon, color_key))
+        self.recent_button.setIcon(theme.icon("mdi6.history"))
         self.canvas.update()
 
     # ---- refresh -----------------------------------------------------------
