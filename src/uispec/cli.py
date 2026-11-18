@@ -79,6 +79,13 @@ def _point(text: str) -> list[float]:
     return parts
 
 
+def _size(text: str) -> tuple[int, int]:
+    try:
+        return store.parse_size(text)
+    except ValueError as exc:
+        raise CliError(str(exc)) from None
+
+
 def _emit(result, as_json: bool) -> None:
     if as_json:
         print(json.dumps(result))
@@ -116,9 +123,13 @@ def build_parser() -> argparse.ArgumentParser:
     pgrid.add_argument("--snap", choices=["on", "off"])
 
     screen = sub.add_parser("screen", help="screens").add_subparsers(dest="cmd", required=True)
-    sadd = screen.add_parser("add", help="add a screenshot file")
-    sadd.add_argument("path", type=Path)
+    sadd = screen.add_parser("add", help="add a screenshot file, or an empty canvas with --blank")
+    sadd.add_argument("path", type=Path, nargs="?")
     sadd.add_argument("--name")
+    sadd.add_argument("--blank", action="store_true",
+                      help="add an empty canvas to draw on, instead of a screenshot")
+    sadd.add_argument("--size", default="1280x800", help="canvas size WxH in pixels (with --blank)")
+    sadd.add_argument("--color", help="canvas background color (with --blank)")
     scap = screen.add_parser("capture", help="capture a region (the user picks it)")
     scap.add_argument("--name")
     screen.add_parser("list")
@@ -258,6 +269,14 @@ def run(args: argparse.Namespace):
     if g == "screen":
         ensure_app()
         if c == "add":
+            if args.blank:
+                if args.path is not None:
+                    raise CliError("give either a screenshot file or --blank, not both")
+                width, height = _size(args.size)
+                return send("screen.add_blank", {"name": args.name, "width": width, "height": height,
+                                                 "color": args.color})
+            if args.path is None:
+                raise CliError("screen add needs a screenshot file, or --blank for an empty canvas")
             return send("screen.add", {"path": str(args.path.expanduser()), "name": args.name})
         if c == "capture":
             return send("screen.capture", {"name": args.name})

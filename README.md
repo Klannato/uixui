@@ -10,6 +10,7 @@ an agent can read and implement. (The command-line tool and Python package are n
 
 ## Features
 
+- **Design from scratch, or annotate what exists:** add a blank canvas in any size (`uispec screen add --blank --size 1280x800`) and the texture-mapped elements you draw *are* the design — no screenshot needed. Reach for a screenshot (paste, drop, or capture a region) when you are changing an existing UI.
 - **Screenshots in any way you like:** paste from the clipboard, drop image files, add files, or capture a region of your screen (Wayland-safe, via the desktop portal).
 - **Numbered elements:** draw rectangles, ellipses, or freehand outlines. Each one gets a pin that the description refers to.
 - **Delete screens:** remove a screen and its elements from the panel button, the list's right-click menu, or the Delete key. Undo with Ctrl+Z.
@@ -45,10 +46,11 @@ uispec app install            # adds "UI X UI" to your application launcher
 
 ```bash
 uispec project new --name myapp            # creates ~/ui-specs/myapp and opens the app
-uispec screen add login.png --name Login
+uispec screen add --blank --size 1280x800 --name Login   # empty canvas to design on
+# …or annotate something that exists: uispec screen add login.png --name Login
 uispec element add --box 40,40,200,60      # x,y,w,h in image pixels
 uispec element edit 1 --set name=Submit --set purpose="Logs the user in" --set states="default,hover,disabled"
-uispec arrow add --from 1 --to 2 --label "on success"
+uispec element texture 1 --pattern grain --color "#eeeeee" --opacity 0.2   # texture-map the surface
 uispec export                              # writes ~/ui-specs/myapp/current/spec.md
 ```
 

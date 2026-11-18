@@ -105,6 +105,7 @@ class Screen:
     image: str
     id: str = field(default_factory=new_id)
     leads_to: str = ""
+    blank: bool = False
     elements: list[Element] = field(default_factory=list)
     arrows: list[Arrow] = field(default_factory=list)
     labels: list[TextLabel] = field(default_factory=list)
@@ -145,6 +146,7 @@ class Screen:
             "name": self.name,
             "image": self.image,
             "leads_to": self.leads_to,
+            "blank": self.blank,
             "elements": [e.to_dict() for e in self.elements],
             "arrows": [asdict(a) for a in self.arrows],
             "labels": [asdict(t) for t in self.labels],
@@ -157,6 +159,7 @@ class Screen:
             name=d["name"],
             image=d["image"],
             leads_to=d.get("leads_to", ""),
+            blank=bool(d.get("blank", False)),
             elements=[Element.from_dict(e) for e in d.get("elements", [])],
             arrows=[Arrow(**a) for a in d.get("arrows", [])],
             labels=[TextLabel(**t) for t in d.get("labels", [])],

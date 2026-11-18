@@ -65,9 +65,49 @@ def test_unknown_field_rejected(tmp_path, qapp, sample_png):
 
 
 def test_commands_registered():
-    for name in ["app.status", "project.new", "screen.add", "element.add", "element.edit",
-                 "element.delete", "arrow.add", "label.add", "export", "render", "undo", "redo"]:
+    for name in ["app.status", "project.new", "screen.add", "screen.add_blank", "element.add",
+                 "element.edit", "element.delete", "arrow.add", "label.add", "export", "render",
+                 "undo", "redo"]:
         assert name in COMMANDS
+
+
+def test_blank_canvas_screen_needs_no_screenshot(tmp_path, qapp):
+    """A new UI can be drawn on empty canvases with textured elements and no screenshot."""
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "fresh"), "name": "Fresh"})
+
+    info = run(ctrl, "screen.add_blank", {"name": "Home", "width": 1024, "height": 768})
+    assert info["blank"] is True
+    image = tmp_path / "fresh" / info["image"]
+    assert image.exists()
+    canvas = QImage(str(image))
+    assert (canvas.width(), canvas.height()) == (1024, 768)
+
+    assert run(ctrl, "screen.list")["screens"][0]["blank"] is True
+
+    el = run(ctrl, "element.add", {"kind": "rect", "box": [40, 40, 300, 160]})
+    run(ctrl, "element.edit", {"number": el["number"],
+                               "fields": {"name": "Summary card", "purpose": "Shows today's totals",
+                                          "states": ["default", "loading"]}})
+    run(ctrl, "element.texture", {"number": el["number"], "pattern": "grain",
+                                  "color": "#eeeeee", "opacity": 0.2})
+
+    exported = run(ctrl, "export")
+    assert not [w for w in exported["warnings"] if "element" in w]
+    spec = (tmp_path / "fresh" / "current" / "spec.md").read_text()
+    assert "blank canvas drawn from scratch" in spec
+    assert (tmp_path / "fresh" / "current" / "screens" / "01-home" / "annotated.png").exists()
+
+
+def test_blank_canvas_rejects_absurd_size(tmp_path, qapp):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "fresh"), "name": "Fresh"})
+    try:
+        run(ctrl, "screen.add_blank", {"name": "Huge", "width": 99999, "height": 99999})
+    except CommandError as exc:
+        assert "canvas" in str(exc)
+    else:
+        raise AssertionError("expected an error")
 
 
 def test_resize_command_updates_box_and_undoes(tmp_path, qapp, sample_png):

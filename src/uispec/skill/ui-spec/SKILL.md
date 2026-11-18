@@ -1,11 +1,26 @@
 ---
 name: ui-spec
-description: Use whenever you build, change, or review a user interface, or when the user pastes the "Implement or update the UI for …" prompt copied from the uispec app. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it in Material Design unless told otherwise, texture-mapping surfaces and baking each texture into its element as a placeholder. On first use in a project with no spec yet it asks whether the user will annotate it themselves or have the agent draw the entire flow (every screen and element), then proceeds accordingly.
+description: Use whenever you build, change, or review a user interface, or when the user pastes the "Implement or update the UI for …" prompt copied from the uispec app. Reads the spec the user made with the uispec app (screens drawn as blank canvases or annotated screenshots, with numbered elements, per-element descriptions, a layout grid, and textures) and implements it in Material Design unless told otherwise, texture-mapping surfaces and baking each texture into its element as a placeholder. Designs new UIs on blank canvases with textured elements, and only uses screenshots when changing an existing UI that was not built with UI X UI. On first use in a project with no spec yet it asks whether the user will annotate it themselves or have the agent draw the entire flow (every screen and element), then proceeds accordingly.
 ---
 
 # ui-spec
 
-The user annotates screenshots in the `uispec` app and exports a spec. The spec is the source of truth for the UI.
+The user annotates screens in the `uispec` app and exports a spec. The spec is the source of truth for the UI.
+
+## Screens: blank canvases, not screenshots
+
+A screen is one of two things:
+
+- **A blank canvas** — `uispec screen add --blank --size 1280x800 --name Home`. This is the default. The
+  design lives in the elements: each one is described and carries a texture, and those textured
+  elements are all you need to build the UI from scratch. Use a canvas for anything new, and for a UI
+  already built with UI X UI.
+- **A screenshot** of an existing UI — `uispec screen add FILE --name N` (or paste, drop, or
+  region-capture in the app). Use this **only** when you are changing an existing UI that was **not**
+  built with UI X UI, so you can annotate the real pixels.
+
+So: draw on canvases and describe and texture every element; reach for a screenshot only when the user
+is editing a UI they already have. Never ask for screenshots of an app that does not exist yet.
 
 ## Step 1: find the spec
 
@@ -21,8 +36,9 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
    1. Offer to open the annotator on the project:
       - existing folder: `uispec app open --project ~/ui-specs/<project>`
       - brand new project: `uispec project new --name <project>`
-   2. Ask the user to add their screens. In the app they can **Paste** a screenshot (Ctrl+V),
-      **Add image** a file, or **Capture region** a part of a live app.
+   2. Ask the user to add their screens: a **blank canvas** (toolbar → Blank canvas) to design from
+      scratch, or a **screenshot** (paste, add image, or capture region) if they are changing an
+      existing UI that was not built with UI X UI.
    3. Ask them to draw a **numbered element** over each part of the UI and describe it in the form:
       name, purpose, behavior, states, content, constraints, notes, reference. They can also pin a
       texture on an element; you texture-map the rest by default (Step 3). They set the **project
@@ -43,10 +59,11 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
    2. Create the project if needed: `uispec project new --name <project>`.
    3. Set the **project brief**, **design tokens**, and **layout grid** yourself from what you find
       (`uispec project brief --set ...`, `uispec project tokens --set ...`, `uispec project grid`).
-   4. Plan the full set of screens the flow needs and create every one of them. Each screen needs an
-      image, which only the user can supply: ask for one screenshot per screen (paste, drop a file,
-      or `uispec screen capture` while they pick a region), then `uispec screen add FILE --name N`.
-      If a screen does not exist yet, ask for a mock, a sketch, or a screenshot of the closest thing.
+   4. Create a **blank canvas** for every screen the flow needs:
+      `uispec screen add --blank --size 1280x800 --name N` (pick the size for the platform the UI
+      targets). This is the default and needs nothing from the user. Add a **screenshot** instead only
+      when you are changing an existing UI that was not built with UI X UI — then ask the user for the
+      images.
    5. On every screen, draw **every element** the project requires — `uispec element add` for each —
       and describe each one fully (name, purpose, behavior, states, content, constraints, notes,
       reference) with `uispec element edit`. Nothing that the project needs should be left out or
@@ -65,6 +82,10 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
 - **Project brief** and **design tokens** apply to every screen. Use the tokens exactly (colors, fonts, spacing, radii).
 - **Layout grid** (`## Layout grid` in `spec.md`) is the spacing system. Place and size elements on multiples of the grid size, e.g. 8px. If snapping is on, the user drew elements on the grid on purpose.
 - **Screen flow** gives the order and the transitions (`leads to`).
+- **Each screen is a canvas or a screenshot** (`blank: true` in `screens/*/elements.json` marks a
+  canvas). On a blank canvas there are no source pixels to copy: the numbered elements *are* the
+  design, so their boxes, descriptions, and textures are the whole layout. On a screenshot screen,
+  match the real pixels you can see.
 - **Each numbered element** has fields: name, purpose, behavior, states, content, constraints, notes, reference, and texture. Implement each one against its fields. Treat `states` as the states that must exist, not optional extras.
 - **Textures** describe what the element's surface looks like. A texture is a **background fill**: apply it as a real surface, never leave it as a flat color or a sentence in a description, and keep any text or controls on top readable. **Texture maps are the default surface treatment** — unless the spec or the user says otherwise, every surface should carry one (see Step 3).
   - `image` textures are picture fills. The file is in the screen folder under `textures/`. `tile` repeats it at the given scale, `stretch` fills the element once. Apply the stated opacity and tint.
@@ -104,13 +125,16 @@ All changes go through the `uispec` command. It talks to the running app and sta
 **Project and screens**
 - `uispec project info` / `uispec project brief --set purpose="..."` / `uispec project tokens --set colors="..."`
 - `uispec project grid --size 8 --snap on|off` sets the layout grid. Snapping applies to drawing, moving, and resizing in the app.
-- `uispec screen list` / `uispec screen add FILE --name N` / `uispec screen capture` (the user picks the region)
+- `uispec screen list`
+- `uispec screen add --blank --size 1280x800 --name N` adds an empty canvas to design on (the default)
+- `uispec screen add FILE --name N` adds a screenshot, for changing an existing UI not built with UI X UI
+- `uispec screen capture` (the user picks a region of a live app)
 - `uispec screen select NAME` / `uispec screen set NAME --leads-to "..."` / `uispec screen reorder NAME --index N` / `uispec screen remove NAME`
 
 **Elements** (numbers are the pins; later elements renumber after a delete)
 - `uispec element list [--screen S]`
-- `uispec element add --kind rect|ellipse --box x,y,w,h` (image pixels, top-left origin)
-- `uispec element edit N --set name="..." --set purpose="..." --set states="default,hover,disabled"`. Fields: name, purpose, behavior, states, content, constraints, notes, reference
+- `uispec element add [--screen S] --kind rect|ellipse --box x,y,w,h` (image pixels, top-left origin)
+- `uispec element edit N [--screen S] --set name="..." --set purpose="..." --set states="default,hover,disabled"`. Fields: name, purpose, behavior, states, content, constraints, notes, reference
 - `uispec element resize N --box x,y,w,h` (minimum 4px per side)
 - `uispec element align --numbers 1,2,3 --mode left|hcenter|right|top|vcenter|bottom|dist_h|dist_v` lines up or spaces several elements. Align needs two elements; distribute needs three
 - `uispec element texture N --file IMG [--mode tile|stretch] [--scale 2] [--opacity 0.6] [--tint "#3366ff"]`

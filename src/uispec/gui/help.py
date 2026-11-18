@@ -14,6 +14,8 @@ TIPS = {
     "add_image": "<b>Add image</b><br>Add a screenshot file (PNG, JPG, WebP…) as a new screen.",
     "capture": "<b>Capture region</b><br>Pick a part of your screen. Your desktop shows the selector, "
                "and the capture becomes a new screen.",
+    "blank_canvas": "<b>Blank canvas</b><br>Add an empty screen to design from scratch — pick a name "
+                    "and size, then draw textured elements on it. No screenshot needed.",
     "screens_list": "<b>Screens</b><br>The screens in flow order. Drag a screen to reorder it.",
     "delete_screen": "<b>Delete screen</b><br>Remove the selected screen and its elements. "
                      "Press Delete while the list has focus. You can undo with Ctrl+Z.",
@@ -96,9 +98,10 @@ TIPS = {
 HINTS = {
     "elements": "Draw a shape on the canvas to add an element. Select one to describe it.",
     "element_form": "Select an element to edit its description.",
-    "no_screen": "Paste or add a screenshot to start a screen.",
+    "no_screen": "Add a screenshot to design over it, or a blank canvas to design from scratch.",
     "project": "The brief and tokens apply to every screen. Agents read them first.",
-    "canvas_empty": "Paste a screenshot (Ctrl+V), drop an image file here, or capture a region.",
+    "canvas_empty": "Add a screenshot (Ctrl+V, a file, or a region capture) to change an existing UI, "
+                    "or add a blank canvas to draw a new one.",
     "multi_select": "Shift-click or drag a box to select several. Use the buttons below to line them up.",
     "texture": "Fills the selected element. Agents can set the same thing with uispec element texture.",
     "grid": "The layout grid is part of the spec. Agents use it to space elements consistently.",

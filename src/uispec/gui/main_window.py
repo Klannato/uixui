@@ -190,6 +190,8 @@ class MainWindow(QMainWindow):
         top.addAction(self._action("Paste", "mdi6.content-paste", TIPS["paste"], self.paste_image, "Ctrl+V"))
         top.addAction(self._action("Add image", "mdi6.image-plus", TIPS["add_image"], self.add_image_file))
         top.addAction(self._action("Capture", "mdi6.monitor-screenshot", TIPS["capture"], self.capture_region))
+        top.addAction(self._action("Blank canvas", "mdi6.rectangle-outline", TIPS["blank_canvas"],
+                                  self.add_blank_screen))
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -397,6 +399,30 @@ class MainWindow(QMainWindow):
             self.show_message(error if error else f"Captured {result['name']}")
 
         ASYNC["screen.capture"](self.ctrl, {}, done)
+
+    def add_blank_screen(self) -> None:
+        """Add an empty canvas for designing a new UI with no source screenshot."""
+        if not self.ctrl.is_open:
+            return self.show_message("Open or create a project first")
+        index = len(self.ctrl.project.screens) + 1
+        name, ok = QInputDialog.getText(self, "Blank canvas", "Screen name:",
+                                        text=f"Screen {index}")
+        if not ok:
+            return
+        size, ok = QInputDialog.getText(self, "Blank canvas", "Canvas size (WxH, in pixels):",
+                                        text="1280x800")
+        if not ok:
+            return
+        try:
+            width, height = store.parse_size(size)
+        except ValueError as exc:
+            return self.show_message(str(exc))
+        try:
+            result = COMMANDS["screen.add_blank"](
+                self.ctrl, {"name": name.strip(), "width": width, "height": height})
+        except CommandError as exc:
+            return self.show_message(str(exc))
+        self.show_message(f"Added blank canvas {result['name']} ({width}×{height})")
 
     # ---- export and handoff ---------------------------------------------------
 

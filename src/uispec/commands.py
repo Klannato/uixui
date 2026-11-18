@@ -157,7 +157,7 @@ def _check_fields(fields: dict, allowed) -> None:
 
 def _screen_summary(index: int, s: Screen) -> dict:
     return {"index": index, "id": s.id, "name": s.name, "image": s.image,
-            "leads_to": s.leads_to, "elements": len(s.elements)}
+            "leads_to": s.leads_to, "blank": s.blank, "elements": len(s.elements)}
 
 
 @command("screen.list")
@@ -169,6 +169,27 @@ def screen_list(ctrl: Controller, args: dict):
 @command("screen.add")
 def screen_add(ctrl: Controller, args: dict):
     return add_screen_from_file(ctrl, Path(args["path"]).expanduser(), args.get("name"))
+
+
+@command("screen.add_blank")
+def screen_add_blank(ctrl: Controller, args: dict):
+    """Add an empty canvas for a UI that will be drawn from scratch, with no source screenshot."""
+    ctrl.require_project()
+    index = len(ctrl.project.screens) + 1
+    name = (args.get("name") or "").strip() or f"Screen {index}"
+    width = args.get("width") or store.CANVAS_DEFAULT[0]
+    height = args.get("height") or store.CANVAS_DEFAULT[1]
+    image = store.create_blank_image(ctrl.folder, index, name, width, height,
+                                     args.get("color") or "#ffffff")
+    screen = Screen(name=name, image=image, blank=True)
+
+    def apply(project):
+        project.screens.append(screen)
+    ctrl.mutate(apply)
+    ctrl.current_screen_id = screen.id
+    ctrl.changed.emit()
+    return {"id": screen.id, "name": screen.name, "image": image, "blank": True,
+            "width": int(width), "height": int(height)}
 
 
 def add_screen_from_file(ctrl: Controller, source: Path, name: str | None = None) -> dict:

@@ -93,7 +93,10 @@ def spec_markdown(project: Project, screen_dirs: dict[str, str], stamp: str) -> 
     for i, s in enumerate(project.screens, 1):
         lines += [f"## Screen {i}: {s.name}", ""]
         d = screen_dirs[s.id]
-        lines.append(f"- Original: `{d}/original.png`")
+        if s.blank:
+            lines.append(f"- Canvas: `{d}/original.png` (blank canvas drawn from scratch, no screenshot)")
+        else:
+            lines.append(f"- Original: `{d}/original.png`")
         lines.append(f"- Annotated: `{d}/annotated.png`")
         lines.append(f"- Machine-readable elements: `{d}/elements.json`")
         if s.leads_to:
@@ -157,6 +160,7 @@ def export(folder: Path, project: Project) -> dict:
         data = {
             "screen": screen.name,
             "leads_to": screen.leads_to,
+            "blank": screen.blank,
             "elements": elements,
             "arrows": [{"from": a.from_number, "to": a.to_number, "to_point": a.to_point, "label": a.label}
                        for a in screen.arrows],

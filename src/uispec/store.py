@@ -11,6 +11,10 @@ from .model import Project
 PROJECT_FILE = "project.json"
 RECENT_LIMIT = 20
 
+MIN_CANVAS = 64
+MAX_CANVAS = 8000
+CANVAS_DEFAULT = (1280, 800)
+
 
 def ui_specs_root() -> Path:
     return Path.home() / "ui-specs"
@@ -57,16 +61,53 @@ def create_project(folder: Path, name: str) -> Project:
     return project
 
 
-def import_image(folder: Path, source: Path, index: int, name: str) -> str:
-    """Copy a source image into the project's screens/ folder and return its relative path."""
+def parse_size(text: str) -> tuple[int, int]:
+    """Parse a 'WxH' pixel size such as '1280x800'."""
+    parts = text.lower().replace(" ", "").split("x")
+    if len(parts) != 2:
+        raise ValueError("size must be WxH, e.g. 1280x800")
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        raise ValueError("size must be whole numbers, e.g. 1280x800") from None
+
+
+def _safe_name(name: str) -> str:
+    return "".join(c if c.isalnum() or c in "-_" else "-" for c in name).strip("-") or "screen"
+
+
+def _screen_dest(folder: Path, index: int, name: str) -> Path:
     dest_dir = folder / "screens"
     dest_dir.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in name).strip("-") or "screen"
-    dest = dest_dir / f"{index:02d}-{safe}.png"
+    dest = dest_dir / f"{index:02d}-{_safe_name(name)}.png"
+    if dest.exists():  # never clobber another screen's image
+        dest = dest_dir / f"{index:02d}-{_safe_name(name)}-{new_suffix()}.png"
+    return dest
+
+
+def import_image(folder: Path, source: Path, index: int, name: str) -> str:
+    """Copy a source image into the project's screens/ folder and return its relative path."""
+    dest = _screen_dest(folder, index, name)
     if source.suffix.lower() == ".png":
         shutil.copyfile(source, dest)
     else:
         _convert_to_png(source, dest)
+    return str(dest.relative_to(folder))
+
+
+def create_blank_image(folder: Path, index: int, name: str, width: int, height: int,
+                       color: str = "#ffffff") -> str:
+    """Write an empty canvas (a solid-color PNG) and return its relative path."""
+    from PySide6.QtGui import QColor, QImage
+
+    width, height = int(width), int(height)
+    if not (MIN_CANVAS <= width <= MAX_CANVAS and MIN_CANVAS <= height <= MAX_CANVAS):
+        raise ValueError(f"canvas must be {MIN_CANVAS}-{MAX_CANVAS}px on each side")
+    dest = _screen_dest(folder, index, name)
+    image = QImage(width, height, QImage.Format.Format_ARGB32)
+    image.fill(QColor(color))
+    if not image.save(str(dest), "PNG"):
+        raise OSError(f"cannot write {dest}")
     return str(dest.relative_to(folder))
 
 
