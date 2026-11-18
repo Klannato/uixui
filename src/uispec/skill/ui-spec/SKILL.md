@@ -1,6 +1,6 @@
 ---
 name: ui-spec
-description: Use whenever you build, change, or review a user interface, or when the user pastes the "Implement or update the UI for …" prompt copied from the uispec app. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it in Material Design unless told otherwise, texture-mapping surfaces and baking each texture into its element as a placeholder. On first use in a project it walks the user through making a spec and handing the prompt back.
+description: Use whenever you build, change, or review a user interface, or when the user pastes the "Implement or update the UI for …" prompt copied from the uispec app. Reads the annotated UI spec the user made with the uispec app (screenshots with numbered elements, per-element descriptions, a layout grid, and textures) and implements it in Material Design unless told otherwise, texture-mapping surfaces and baking each texture into its element as a placeholder. On first use in a project with no spec yet it asks whether the user will annotate it themselves or have the agent draw the entire flow (every screen and element), then proceeds accordingly.
 ---
 
 # ui-spec
@@ -12,9 +12,12 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
 1. Work out the project name: the git repo root name, or the current directory name if there is no repo.
 2. Check for `~/ui-specs/<project>/current/spec.md`.
 3. If it exists, read it. Then read every `screens/*/annotated.png` and `screens/*/elements.json` it lists. The annotated PNG shows the numbered outlines, pins, arrows, and textures; the JSON has the same content in machine-readable form.
-4. If it does not exist, this is your **first time in this project**. Say so, then walk the user
-   through making a spec and handing it back to you. Do this **once**, on this first contact only;
-   once `current/spec.md` exists, never repeat the walkthrough — just read the spec and build.
+4. If it does not exist, this is your **first time in this project**. Say so, then ask one question
+   before anything else: **do they want to annotate the spec themselves in the app, or should you
+   draw the entire flow for them?** Do this **once**, on this first contact only; once
+   `current/spec.md` exists, never repeat it — just read the spec and build.
+
+   **If they will annotate it themselves:**
    1. Offer to open the annotator on the project:
       - existing folder: `uispec app open --project ~/ui-specs/<project>`
       - brand new project: `uispec project new --name <project>`
@@ -22,9 +25,9 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
       **Add image** a file, or **Capture region** a part of a live app.
    3. Ask them to draw a **numbered element** over each part of the UI and describe it in the form:
       name, purpose, behavior, states, content, constraints, notes, reference. They can also pin a
-      texture on an element; the agent texture-maps the rest by default (Step 3). They set the
-      **project brief** and **design tokens** once for the whole app, and the **layout grid** sets
-      spacing. The style is Material Design 3 unless they say otherwise.
+      texture on an element; you texture-map the rest by default (Step 3). They set the **project
+      brief** and **design tokens** once for the whole app, and the **layout grid** sets spacing.
+      The style is Material Design 3 unless they say otherwise.
    4. When the screens are described, ask them to press **Export**. That writes
       `~/ui-specs/<project>/current/spec.md` plus `screens/*/annotated.png`.
    5. Then ask them to press **Copy prompt** in the toolbar and paste it to you. That message reads
@@ -33,9 +36,29 @@ The user annotates screenshots in the `uispec` app and exports a spec. The spec 
    6. Wait for them to paste the prompt (or tell you the spec is ready). Do not build anything before
       the spec exists unless the user says to skip it.
 
-   You may do the mechanical steps for them with the commands under "Working with the annotator"
-   below (add screens, draw elements, set the brief), but the descriptions are the user's to
-   confirm. Keep the walkthrough to the first time and then get out of the way.
+   **If they want you to draw the entire flow** (confirm this before starting): you build the whole
+   spec yourself — **every screen and every element the project requires**, not a skeleton.
+   1. Learn the product first, so the flow you draw is real: read the repo (README, routes, existing
+      UI, data models) and ask the user what the flow should cover if it is not clear.
+   2. Create the project if needed: `uispec project new --name <project>`.
+   3. Set the **project brief**, **design tokens**, and **layout grid** yourself from what you find
+      (`uispec project brief --set ...`, `uispec project tokens --set ...`, `uispec project grid`).
+   4. Plan the full set of screens the flow needs and create every one of them. Each screen needs an
+      image, which only the user can supply: ask for one screenshot per screen (paste, drop a file,
+      or `uispec screen capture` while they pick a region), then `uispec screen add FILE --name N`.
+      If a screen does not exist yet, ask for a mock, a sketch, or a screenshot of the closest thing.
+   5. On every screen, draw **every element** the project requires — `uispec element add` for each —
+      and describe each one fully (name, purpose, behavior, states, content, constraints, notes,
+      reference) with `uispec element edit`. Nothing that the project needs should be left out or
+      left blank.
+   6. Wire the flow with `uispec arrow add` and add `uispec label add` notes where they help.
+   7. Texture-map elements as in Step 3, then `uispec export`.
+   8. Tell the user to review the result in the app (they can fix anything — edits appear live), then
+      continue with Step 2 yourself. You already have the spec, so no prompt needs to be pasted.
+
+   You may do the mechanical steps under "Working with the annotator" in either path. In the
+   self-annotate path the descriptions are the user's to confirm; in the draw-it-for-me path you own
+   them and the user reviews. Keep the walkthrough to the first time and then get out of the way.
 
 ## Step 2: read the spec carefully
 
