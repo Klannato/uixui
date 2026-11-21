@@ -157,7 +157,8 @@ def _check_fields(fields: dict, allowed) -> None:
 
 def _screen_summary(index: int, s: Screen) -> dict:
     return {"index": index, "id": s.id, "name": s.name, "image": s.image,
-            "leads_to": s.leads_to, "blank": s.blank, "elements": len(s.elements)}
+            "leads_to": s.leads_to, "blank": s.blank, "canvas_color": s.canvas_color,
+            "elements": len(s.elements)}
 
 
 @command("screen.list")
@@ -179,9 +180,10 @@ def screen_add_blank(ctrl: Controller, args: dict):
     name = (args.get("name") or "").strip() or f"Screen {index}"
     width = args.get("width") or store.CANVAS_DEFAULT[0]
     height = args.get("height") or store.CANVAS_DEFAULT[1]
-    image = store.create_blank_image(ctrl.folder, index, name, width, height,
-                                     args.get("color") or "#ffffff")
-    screen = Screen(name=name, image=image, blank=True)
+    color = args.get("color") or store.CANVAS_DEFAULT_COLOR
+    _check_color(color)
+    image = store.create_blank_image(ctrl.folder, index, name, width, height, color)
+    screen = Screen(name=name, image=image, blank=True, canvas_color=color)
 
     def apply(project):
         project.screens.append(screen)
@@ -189,7 +191,14 @@ def screen_add_blank(ctrl: Controller, args: dict):
     ctrl.current_screen_id = screen.id
     ctrl.changed.emit()
     return {"id": screen.id, "name": screen.name, "image": image, "blank": True,
-            "width": int(width), "height": int(height)}
+            "width": int(width), "height": int(height), "canvas_color": color}
+
+
+def _check_color(color: str) -> None:
+    from PySide6.QtGui import QColor
+
+    if not QColor(color).isValid():
+        raise CommandError(f"not a color: {color!r} (use #rrggbb)")
 
 
 def add_screen_from_file(ctrl: Controller, source: Path, name: str | None = None) -> dict:

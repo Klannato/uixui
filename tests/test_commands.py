@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -78,10 +79,12 @@ def test_blank_canvas_screen_needs_no_screenshot(tmp_path, qapp):
 
     info = run(ctrl, "screen.add_blank", {"name": "Home", "width": 1024, "height": 768})
     assert info["blank"] is True
+    assert info["canvas_color"] == "#1c1b1f"
     image = tmp_path / "fresh" / info["image"]
     assert image.exists()
     canvas = QImage(str(image))
     assert (canvas.width(), canvas.height()) == (1024, 768)
+    assert canvas.pixelColor(0, 0).name() == "#1c1b1f"
 
     assert run(ctrl, "screen.list")["screens"][0]["blank"] is True
 
@@ -96,7 +99,26 @@ def test_blank_canvas_screen_needs_no_screenshot(tmp_path, qapp):
     assert not [w for w in exported["warnings"] if "element" in w]
     spec = (tmp_path / "fresh" / "current" / "spec.md").read_text()
     assert "blank canvas drawn from scratch" in spec
+    assert "background #1c1b1f" in spec
+    elements = json.loads((tmp_path / "fresh" / "current" / "screens" / "01-home" / "elements.json").read_text())
+    assert elements["blank"] is True
+    assert elements["background"] == "#1c1b1f"
     assert (tmp_path / "fresh" / "current" / "screens" / "01-home" / "annotated.png").exists()
+
+
+def test_blank_canvas_color_is_set_and_validated(tmp_path, qapp):
+    ctrl = Controller()
+    run(ctrl, "project.new", {"folder": str(tmp_path / "ink"), "name": "Ink"})
+    info = run(ctrl, "screen.add_blank", {"name": "Ink", "width": 200, "height": 200,
+                                          "color": "#0b5fff"})
+    assert info["canvas_color"] == "#0b5fff"
+    assert QImage(str(tmp_path / "ink" / info["image"])).pixelColor(0, 0).name() == "#0b5fff"
+    try:
+        run(ctrl, "screen.add_blank", {"name": "Bad", "color": "not-a-color"})
+    except CommandError as exc:
+        assert "not a color" in str(exc)
+    else:
+        raise AssertionError("expected an error")
 
 
 def test_blank_canvas_rejects_absurd_size(tmp_path, qapp):

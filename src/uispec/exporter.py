@@ -94,7 +94,8 @@ def spec_markdown(project: Project, screen_dirs: dict[str, str], stamp: str) -> 
         lines += [f"## Screen {i}: {s.name}", ""]
         d = screen_dirs[s.id]
         if s.blank:
-            lines.append(f"- Canvas: `{d}/original.png` (blank canvas drawn from scratch, no screenshot)")
+            background = f", background {s.canvas_color}" if s.canvas_color else ""
+            lines.append(f"- Canvas: `{d}/original.png` (blank canvas drawn from scratch, no screenshot{background})")
         else:
             lines.append(f"- Original: `{d}/original.png`")
         lines.append(f"- Annotated: `{d}/annotated.png`")
@@ -161,6 +162,7 @@ def export(folder: Path, project: Project) -> dict:
             "screen": screen.name,
             "leads_to": screen.leads_to,
             "blank": screen.blank,
+            "background": screen.canvas_color or None,
             "elements": elements,
             "arrows": [{"from": a.from_number, "to": a.to_number, "to_point": a.to_point, "label": a.label}
                        for a in screen.arrows],

@@ -15,7 +15,9 @@ TIPS = {
     "capture": "<b>Capture region</b><br>Pick a part of your screen. Your desktop shows the selector, "
                "and the capture becomes a new screen.",
     "blank_canvas": "<b>Blank canvas</b><br>Add an empty screen to design from scratch — pick a name "
-                    "and size, then draw textured elements on it. No screenshot needed.",
+                    "and size, then draw textured elements on it. No screenshot needed. The page starts "
+                    "as a dark neutral surface so light elements stay visible; change it with "
+                    "<code>uispec screen add --blank --color #rrggbb</code>.",
     "screens_list": "<b>Screens</b><br>The screens in flow order. Drag a screen to reorder it.",
     "delete_screen": "<b>Delete screen</b><br>Remove the selected screen and its elements. "
                      "Press Delete while the list has focus. You can undo with Ctrl+Z.",

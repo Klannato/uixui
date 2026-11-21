@@ -14,6 +14,7 @@ RECENT_LIMIT = 20
 MIN_CANVAS = 64
 MAX_CANVAS = 8000
 CANVAS_DEFAULT = (1280, 800)
+CANVAS_DEFAULT_COLOR = "#1c1b1f"
 
 
 def ui_specs_root() -> Path:
@@ -96,7 +97,7 @@ def import_image(folder: Path, source: Path, index: int, name: str) -> str:
 
 
 def create_blank_image(folder: Path, index: int, name: str, width: int, height: int,
-                       color: str = "#ffffff") -> str:
+                       color: str = CANVAS_DEFAULT_COLOR) -> str:
     """Write an empty canvas (a solid-color PNG) and return its relative path."""
     from PySide6.QtGui import QColor, QImage
 

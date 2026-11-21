@@ -14,7 +14,9 @@ A screen is one of two things:
 - **A blank canvas** — `uispec screen add --blank --size 1280x800 --name Home`. This is the default. The
   design lives in the elements: each one is described and carries a texture, and those textured
   elements are all you need to build the UI from scratch. Use a canvas for anything new, and for a UI
-  already built with UI X UI.
+  already built with UI X UI. The page starts as a dark neutral surface (`#1c1b1f`) so light elements
+  stay visible; that color is the page background, and the spec records it (`background` in
+  `screens/*/elements.json`). Pick another page color with `--color #rrggbb`.
 - **A screenshot** of an existing UI — `uispec screen add FILE --name N` (or paste, drop, or
   region-capture in the app). Use this **only** when you are changing an existing UI that was **not**
   built with UI X UI, so you can annotate the real pixels.
@@ -55,19 +57,24 @@ is editing a UI they already have. Never ask for screenshots of an app that does
    **If they want you to draw the entire flow** (confirm this before starting): you build the whole
    spec yourself — **every screen and every element the project requires**, not a skeleton.
    1. Learn the product first, so the flow you draw is real: read the repo (README, routes, existing
-      UI, data models) and ask the user what the flow should cover if it is not clear.
+      UI, data models) and ask the user what the flow should cover if it is not clear. Then **ask the
+      user the questions you cannot answer yourself** — what each screen is for, who acts on it, which
+      states matter, the exact copy and content, constraints and anything the design must avoid. Ask
+      them up front and again as you draw whenever something is unclear. A description the user
+      confirms beats an invented one; never leave a field blank and never guess silently.
    2. Create the project if needed: `uispec project new --name <project>`.
    3. Set the **project brief**, **design tokens**, and **layout grid** yourself from what you find
       (`uispec project brief --set ...`, `uispec project tokens --set ...`, `uispec project grid`).
    4. Create a **blank canvas** for every screen the flow needs:
       `uispec screen add --blank --size 1280x800 --name N` (pick the size for the platform the UI
-      targets). This is the default and needs nothing from the user. Add a **screenshot** instead only
-      when you are changing an existing UI that was not built with UI X UI — then ask the user for the
-      images.
+      targets; the page starts as a dark neutral surface, so light elements stay visible). This is the
+      default and needs nothing from the user. Add a **screenshot** instead only when you are
+      changing an existing UI that was not built with UI X UI — then ask the user for the images.
    5. On every screen, draw **every element** the project requires — `uispec element add` for each —
       and describe each one fully (name, purpose, behavior, states, content, constraints, notes,
-      reference) with `uispec element edit`. Nothing that the project needs should be left out or
-      left blank.
+      reference) with `uispec element edit`. Fill in **as many fields as you can** from what you
+      learned and what the user told you; for the rest, ask rather than invent, and say which fields
+      are still uncertain so the user can fill them. Nothing the project needs should be left out.
    6. Wire the flow with `uispec arrow add` and add `uispec label add` notes where they help.
    7. Texture-map elements as in Step 3, then `uispec export`.
    8. Tell the user to review the result in the app (they can fix anything — edits appear live), then
@@ -84,7 +91,8 @@ is editing a UI they already have. Never ask for screenshots of an app that does
 - **Screen flow** gives the order and the transitions (`leads to`).
 - **Each screen is a canvas or a screenshot** (`blank: true` in `screens/*/elements.json` marks a
   canvas). On a blank canvas there are no source pixels to copy: the numbered elements *are* the
-  design, so their boxes, descriptions, and textures are the whole layout. On a screenshot screen,
+  design, so their boxes, descriptions, and textures are the whole layout, and the screen's
+  `background` color is the page background (dark `#1c1b1f` by default). On a screenshot screen,
   match the real pixels you can see.
 - **Each numbered element** has fields: name, purpose, behavior, states, content, constraints, notes, reference, and texture. Implement each one against its fields. Treat `states` as the states that must exist, not optional extras.
 - **Textures** describe what the element's surface looks like. A texture is a **background fill**: apply it as a real surface, never leave it as a flat color or a sentence in a description, and keep any text or controls on top readable. **Texture maps are the default surface treatment** — unless the spec or the user says otherwise, every surface should carry one (see Step 3).

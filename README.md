@@ -10,7 +10,7 @@ an agent can read and implement. (The command-line tool and Python package are n
 
 ## Features
 
-- **Design from scratch, or annotate what exists:** add a blank canvas in any size (`uispec screen add --blank --size 1280x800`) and the texture-mapped elements you draw *are* the design — no screenshot needed. Reach for a screenshot (paste, drop, or capture a region) when you are changing an existing UI.
+- **Design from scratch, or annotate what exists:** add a blank canvas in any size (`uispec screen add --blank --size 1280x800`) and the texture-mapped elements you draw *are* the design — no screenshot needed. A canvas page starts as a dark neutral surface (`#1c1b1f`) so light elements stay visible, and the page background is written to the spec (`--color #rrggbb` to change it). Reach for a screenshot (paste, drop, or capture a region) when you are changing an existing UI.
 - **Screenshots in any way you like:** paste from the clipboard, drop image files, add files, or capture a region of your screen (Wayland-safe, via the desktop portal).
 - **Numbered elements:** draw rectangles, ellipses, or freehand outlines. Each one gets a pin that the description refers to.
 - **Delete screens:** remove a screen and its elements from the panel button, the list's right-click menu, or the Delete key. Undo with Ctrl+Z.
